@@ -1,0 +1,13 @@
+# PlatformIO
+.pio/
+.vscode/
+
+# Build artifacts
+build/
+sdkconfig.old
+
+# macOS
+.DS_Store
+
+# Credentials (if user creates a local override)
+config_local.h
