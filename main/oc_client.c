@@ -74,7 +74,7 @@ bool oc_check_dashboard(void) {
     char url[192];
     snprintf(url, sizeof(url), "%s/api/system", s_dash_url);
     bool result = do_get(url, 3000);
-    ESP_LOGI(TAG, "Dashboard: %s", s_dashboard_available ? "available" : "not found");
+    ESP_LOGI(TAG, "Dashboard: %s", result ? "available" : "not found");
     return result;
 }
 
