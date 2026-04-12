@@ -5,7 +5,10 @@
 // ============================================================
 // Board selection — set via Kconfig (menu "ClawGlance Board") which
 // each sdkconfig.*.defaults file pins.
-#if defined(CONFIG_CG_BOARD_CYD35)
+#if defined(CONFIG_CG_BOARD_CYD_ST7789)
+  #define CG_BOARD_CYD_ST7789
+  #define CG_BOARD_CYD          // same pins/layout as ILI9341 variant
+#elif defined(CONFIG_CG_BOARD_CYD35)
   #define CG_BOARD_CYD35
 #elif defined(CONFIG_CG_BOARD_CYD)
   #define CG_BOARD_CYD

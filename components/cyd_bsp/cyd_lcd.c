@@ -33,7 +33,30 @@ typedef struct {
     uint8_t flags; // low 5 bits = data length, 0x80 = delay, 0xFF = end
 } lcd_cmd_t;
 
-#ifdef CG_BOARD_CYD35
+#if defined(CG_BOARD_CYD_ST7789)
+// ---- ST7789 init (ESP32-2432S028R variant, 320x240) ----
+static const lcd_cmd_t LCD_INIT[] = {
+    {0x11, {0}, 0x80},                                 // Sleep out + 100ms
+    {0x36, {0x60}, 1},                                 // MADCTL — landscape, MX+MV (RGB order)
+    {0x3A, {0x55}, 1},                                 // COLMOD — 16 bit/pixel
+    {0xB2, {0x0C, 0x0C, 0x00, 0x33, 0x33}, 5},         // Porch setting
+    {0xB7, {0x35}, 1},                                 // Gate control
+    {0xBB, {0x19}, 1},                                 // VCOMS setting
+    {0xC0, {0x2C}, 1},                                 // LCM control
+    {0xC2, {0x01}, 1},                                 // VDV/VRH enable
+    {0xC3, {0x12}, 1},                                 // VRH set (4.45V)
+    {0xC4, {0x20}, 1},                                 // VDV set
+    {0xC6, {0x0F}, 1},                                 // Frame rate (60Hz)
+    {0xD0, {0xA4, 0xA1}, 2},                           // Power control
+    {0xE0, {0xD0, 0x04, 0x0D, 0x11, 0x13, 0x2B, 0x3F,
+            0x54, 0x4C, 0x18, 0x0D, 0x0B, 0x1F, 0x23}, 14}, // Positive gamma
+    {0xE1, {0xD0, 0x04, 0x0C, 0x11, 0x13, 0x2C, 0x3F,
+            0x44, 0x51, 0x2F, 0x1F, 0x1F, 0x20, 0x23}, 14}, // Negative gamma
+    {0x20, {0}, 0},                                    // Display inversion off
+    {0x29, {0}, 0x80},                                 // Display on + 100ms
+    {0x00, {0}, 0xFF},                                 // End of table
+};
+#elif defined(CG_BOARD_CYD35)
 // ---- ST7796U init (ESP32-2432S035, 480x320) ----
 static const lcd_cmd_t LCD_INIT[] = {
     {0x11, {0}, 0x80},                                 // Sleep out + 100ms
@@ -142,7 +165,9 @@ void cyd_lcd_init(void) {
     ESP_ERROR_CHECK(esp_lcd_new_panel_io_spi((esp_lcd_spi_bus_handle_t)CYD_LCD_HOST,
                                               &io_cfg, &s_io));
 
-#ifdef CG_BOARD_CYD35
+#if defined(CG_BOARD_CYD_ST7789)
+    ESP_LOGI(TAG, "Running ST7789 init sequence");
+#elif defined(CG_BOARD_CYD35)
     ESP_LOGI(TAG, "Running ST7796U init sequence");
 #else
     ESP_LOGI(TAG, "Running ILI9341 init sequence");
@@ -154,7 +179,9 @@ void cyd_lcd_init(void) {
         if (c->flags & 0x80) vTaskDelay(pdMS_TO_TICKS(100));
     }
 
-#ifdef CG_BOARD_CYD35
+#if defined(CG_BOARD_CYD_ST7789)
+    ESP_LOGI(TAG, "ST7789 ready: %dx%d landscape", CYD_LCD_H_RES, CYD_LCD_V_RES);
+#elif defined(CG_BOARD_CYD35)
     ESP_LOGI(TAG, "ST7796U ready: %dx%d landscape", CYD_LCD_H_RES, CYD_LCD_V_RES);
 #else
     ESP_LOGI(TAG, "ILI9341 ready: %dx%d landscape", CYD_LCD_H_RES, CYD_LCD_V_RES);

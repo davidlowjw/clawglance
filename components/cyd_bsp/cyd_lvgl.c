@@ -89,6 +89,10 @@ void lvgl_init(void) {
 
     // 3. Touch input.
     cyd_touch_init();
+    if (!cyd_touch_has_calibration()) {
+        ESP_LOGI(TAG, "No touch calibration — running first-boot calibration");
+        cyd_touch_calibrate();
+    }
     cyd_touch_lvgl_register();
 
     s_lvgl_mutex = xSemaphoreCreateRecursiveMutex();

@@ -985,7 +985,9 @@ static void build_about_screen(lv_obj_t *parent) {
 
     // System info
     lv_obj_t *info = lv_label_create(parent);
-#if defined(CG_BOARD_CYD)
+#if defined(CG_BOARD_CYD_ST7789)
+    lv_label_set_text(info, "ESP32 CYD | 320x240 | ST7789");
+#elif defined(CG_BOARD_CYD)
     lv_label_set_text(info, "ESP32 CYD | 320x240 | ILI9341");
 #elif defined(CG_BOARD_CYD35)
     lv_label_set_text(info, "ESP32 CYD | 480x320 | ST7796U");
