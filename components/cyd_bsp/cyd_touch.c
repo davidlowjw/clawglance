@@ -118,6 +118,60 @@ static void nvs_save_cal(const touch_cal_t *cal) {
 }
 
 // ---- LCD drawing helpers for calibration screen ----
+
+// Minimal 5x7 bitmap font for calibration text (uppercase + digits + space)
+// Each character is 5 columns × 7 rows, stored as 5 bytes (one per column,
+// LSB = top row). Only covers what we need for calibration messages.
+static const uint8_t FONT_5X7[][5] = {
+    [' '-' '] = {0x00,0x00,0x00,0x00,0x00},
+    ['('-' '] = {0x00,0x1C,0x22,0x41,0x00},
+    [')'-' '] = {0x00,0x41,0x22,0x1C,0x00},
+    ['+'-' '] = {0x08,0x08,0x3E,0x08,0x08},
+    ['/'-' '] = {0x20,0x10,0x08,0x04,0x02},
+    ['1'-' '] = {0x00,0x42,0x7F,0x40,0x00},
+    ['2'-' '] = {0x42,0x61,0x51,0x49,0x46},
+    ['A'-' '] = {0x7E,0x11,0x11,0x11,0x7E},
+    ['B'-' '] = {0x7F,0x49,0x49,0x49,0x36},
+    ['C'-' '] = {0x3E,0x41,0x41,0x41,0x22},
+    ['D'-' '] = {0x7F,0x41,0x41,0x22,0x1C},
+    ['E'-' '] = {0x7F,0x49,0x49,0x49,0x41},
+    ['H'-' '] = {0x7F,0x08,0x08,0x08,0x7F},
+    ['I'-' '] = {0x00,0x41,0x7F,0x41,0x00},
+    ['L'-' '] = {0x7F,0x40,0x40,0x40,0x40},
+    ['N'-' '] = {0x7F,0x04,0x08,0x10,0x7F},
+    ['O'-' '] = {0x3E,0x41,0x41,0x41,0x3E},
+    ['P'-' '] = {0x7F,0x09,0x09,0x09,0x06},
+    ['R'-' '] = {0x7F,0x09,0x19,0x29,0x46},
+    ['S'-' '] = {0x46,0x49,0x49,0x49,0x31},
+    ['T'-' '] = {0x01,0x01,0x7F,0x01,0x01},
+    ['U'-' '] = {0x3F,0x40,0x40,0x40,0x3F},
+    ['W'-' '] = {0x3F,0x40,0x38,0x40,0x3F},
+};
+
+static void draw_text(int x, int y, const char *str, uint16_t color) {
+    uint16_t swapped = (color >> 8) | (color << 8);
+    // Draw character by character, 6px wide (5 + 1 gap)
+    for (; *str; str++, x += 6) {
+        int idx = *str - ' ';
+        if (idx < 0 || idx >= (int)(sizeof(FONT_5X7)/sizeof(FONT_5X7[0]))) continue;
+        const uint8_t *glyph = FONT_5X7[idx];
+        // Draw column by column (each pixel is a 1x1 rect via cyd_lcd_draw)
+        uint16_t col_buf[7];
+        for (int col = 0; col < 5; col++) {
+            uint8_t bits = glyph[col];
+            int pixels = 0;
+            for (int row = 0; row < 7; row++) {
+                col_buf[row] = (bits & (1 << row)) ? swapped : 0;
+                if (bits & (1 << row)) pixels++;
+            }
+            if (pixels > 0) {
+                cyd_lcd_draw(x + col, y, x + col, y + 6, col_buf);
+                vTaskDelay(pdMS_TO_TICKS(2));
+            }
+        }
+    }
+}
+
 static void draw_crosshair(int cx, int cy, uint16_t color) {
     // Draw a small + shape (11px arms). Use a 1-pixel-wide line buffer.
     const int arm = 8;
@@ -243,36 +297,65 @@ bool cyd_touch_has_calibration(void) {
 void cyd_touch_calibrate(void) {
     ESP_LOGI(TAG, "Starting touch calibration");
 
-    // Point A: top-left area
-    cyd_lcd_fill_solid(0x0000); // black
-    draw_crosshair(CAL_A_DX, CAL_A_DY, 0xFFFF); // white
-    ESP_LOGI(TAG, "Tap the top-left crosshair");
-    wait_for_tap(&s_cal.a_raw_x, &s_cal.a_raw_y);
-    ESP_LOGI(TAG, "Point A: raw(%d, %d) → display(%d, %d)",
-             s_cal.a_raw_x, s_cal.a_raw_y, CAL_A_DX, CAL_A_DY);
-
-    // Brief flash feedback
-    cyd_lcd_fill_solid(0x07E0); // green flash
-    vTaskDelay(pdMS_TO_TICKS(300));
-
-    // Point B: bottom-right area
+    // Let the touch controller settle after boot — ignore phantom presses
+    ESP_LOGI(TAG, "Waiting for touch to settle...");
     cyd_lcd_fill_solid(0x0000);
-    draw_crosshair(CAL_B_DX, CAL_B_DY, 0xFFFF);
-    ESP_LOGI(TAG, "Tap the bottom-right crosshair");
-    wait_for_tap(&s_cal.b_raw_x, &s_cal.b_raw_y);
-    ESP_LOGI(TAG, "Point B: raw(%d, %d) → display(%d, %d)",
-             s_cal.b_raw_x, s_cal.b_raw_y, CAL_B_DX, CAL_B_DY);
+    vTaskDelay(pdMS_TO_TICKS(1500));
 
-    // Save
-    s_cal.valid = true;
-    nvs_save_cal(&s_cal);
+    // Drain any phantom touches
+    for (int i = 0; i < 20; i++) {
+        int16_t dx, dy;
+        read_raw(&dx, &dy);
+        vTaskDelay(pdMS_TO_TICKS(50));
+    }
 
-    // Done flash
-    cyd_lcd_fill_solid(0x07E0);
-    vTaskDelay(pdMS_TO_TICKS(300));
-    cyd_lcd_fill_solid(0x0000);
+    for (int attempt = 0; attempt < 5; attempt++) {
+        // Point A: top-left area — RED crosshair
+        cyd_lcd_fill_solid(0x0000);
+        draw_text(CYD_LCD_H_RES/2 - 60, 10, "TOUCH CALIBRATION", 0xFFFF);
+        draw_text(CYD_LCD_H_RES/2 - 54, 25, "TAP THE CROSSHAIR", 0x7BEF);
+        draw_text(CYD_LCD_H_RES/2 - 6, 40, "(1/2)", 0x7BEF);
+        draw_crosshair(CAL_A_DX, CAL_A_DY, 0xF800); // red
+        ESP_LOGI(TAG, "Tap and HOLD the RED crosshair (top-left)");
+        wait_for_tap(&s_cal.a_raw_x, &s_cal.a_raw_y);
+        ESP_LOGI(TAG, "Point A: raw(%d, %d)", s_cal.a_raw_x, s_cal.a_raw_y);
 
-    ESP_LOGI(TAG, "Calibration complete");
+        // Green flash feedback
+        cyd_lcd_fill_solid(0x07E0);
+        vTaskDelay(pdMS_TO_TICKS(500));
+
+        // Point B: bottom-right area — BLUE crosshair
+        cyd_lcd_fill_solid(0x0000);
+        draw_text(CYD_LCD_H_RES/2 - 60, 10, "TOUCH CALIBRATION", 0xFFFF);
+        draw_text(CYD_LCD_H_RES/2 - 54, 25, "TAP THE CROSSHAIR", 0x7BEF);
+        draw_text(CYD_LCD_H_RES/2 - 6, 40, "(2/2)", 0x7BEF);
+        draw_crosshair(CAL_B_DX, CAL_B_DY, 0x001F); // blue
+        ESP_LOGI(TAG, "Tap and HOLD the BLUE crosshair (bottom-right)");
+        wait_for_tap(&s_cal.b_raw_x, &s_cal.b_raw_y);
+        ESP_LOGI(TAG, "Point B: raw(%d, %d)", s_cal.b_raw_x, s_cal.b_raw_y);
+
+        // Validate: the two points must be sufficiently apart
+        int dx = abs(s_cal.b_raw_x - s_cal.a_raw_x);
+        int dy = abs(s_cal.b_raw_y - s_cal.a_raw_y);
+        if (dx > 200 || dy > 200) {
+            // Good calibration
+            s_cal.valid = true;
+            nvs_save_cal(&s_cal);
+            cyd_lcd_fill_solid(0x07E0); // green = success
+            vTaskDelay(pdMS_TO_TICKS(500));
+            cyd_lcd_fill_solid(0x0000);
+            ESP_LOGI(TAG, "Calibration complete");
+            return;
+        }
+
+        ESP_LOGW(TAG, "Points too close (dx=%d dy=%d), retry %d/5", dx, dy, attempt + 1);
+        cyd_lcd_fill_solid(0xF800); // red = error
+        vTaskDelay(pdMS_TO_TICKS(1000));
+    }
+
+    // All attempts failed — use fallback and continue
+    ESP_LOGW(TAG, "Calibration failed after 5 attempts, using fallback");
+    s_cal.valid = false;
 }
 
 bool cyd_touch_read(int16_t *x, int16_t *y) {
