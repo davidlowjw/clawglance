@@ -214,7 +214,13 @@ static void main_task(void *arg) {
 void app_main(void) {
     ESP_LOGI(TAG, "========================================");
     ESP_LOGI(TAG, "  ClawGlance v%s", CLAWGLANCE_VERSION);
+#if defined(CG_BOARD_CYD)
+    ESP_LOGI(TAG, "  CYD 2.8\" Port (ESP32-2432S028R)");
+#elif defined(CG_BOARD_CYD35)
+    ESP_LOGI(TAG, "  CYD 3.5\" Port (ESP32-2432S035)");
+#else
     ESP_LOGI(TAG, "  ESP32-S3 3.5\" Port");
+#endif
     ESP_LOGI(TAG, "========================================");
 
     // NVS (required for WiFi)

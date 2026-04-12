@@ -27,11 +27,24 @@ static lv_obj_t *scr_about = NULL;
 #define OC_TEXT_DIM  0x656d76
 #define OC_TEXT_MUT  0x3a3a42
 
-// ---- Layout ----
-#define W 480
-#define H 320
-#define BAR_H 34
-#define NAV_H 48
+// ---- Layout (board-conditional) ----
+#ifdef CG_BOARD_CYD
+  #define W       320
+  #define H       240
+  #define BAR_H    24
+  #define NAV_H    34
+  #define FONT_LG  &lv_font_montserrat_14
+  #define FONT_MD  &lv_font_montserrat_12
+  #define FONT_SM  &lv_font_montserrat_10
+#else
+  #define W       480
+  #define H       320
+  #define BAR_H    34
+  #define NAV_H    48
+  #define FONT_LG  &lv_font_montserrat_16
+  #define FONT_MD  &lv_font_montserrat_14
+  #define FONT_SM  &lv_font_montserrat_12
+#endif
 #define NAV_Y (H - NAV_H)
 
 // ============================================================
@@ -92,14 +105,19 @@ static void build_nav_bar(lv_obj_t *parent, int active_idx) {
     lv_obj_clear_flag(nav, LV_OBJ_FLAG_SCROLLABLE);
 
     const char *labels[] = { LV_SYMBOL_HOME " Dashboard", LV_SYMBOL_LIST " Activity", LV_SYMBOL_SETTINGS " Control" };
+#ifdef CG_BOARD_CYD
+    const int nav_btn_w = 96, nav_btn_h = 26;
+#else
+    const int nav_btn_w = 148, nav_btn_h = 38;
+#endif
     for (int i = 0; i < 3; i++) {
         lv_obj_t *btn = lv_btn_create(nav);
-        lv_obj_set_size(btn, 148, 38);
+        lv_obj_set_size(btn, nav_btn_w, nav_btn_h);
         lv_obj_set_style_bg_color(btn, lv_color_hex(i == active_idx ? OC_RED : OC_MUTED), 0);
         lv_obj_set_style_radius(btn, 6, 0);
         lv_obj_t *lbl = lv_label_create(btn);
         lv_label_set_text(lbl, labels[i]);
-        lv_obj_set_style_text_font(lbl, &lv_font_montserrat_14, 0);
+        lv_obj_set_style_text_font(lbl, FONT_MD, 0);
         lv_obj_center(lbl);
         lv_obj_set_user_data(btn, (void *)(intptr_t)i);
         lv_obj_add_event_cb(btn, nav_btn_handler, LV_EVENT_CLICKED, NULL);
@@ -127,13 +145,13 @@ static void build_status_bar(lv_obj_t *parent, lv_obj_t **time_lbl) {
     lv_obj_t *title = lv_label_create(bar);
     lv_label_set_text(title, "ClawGlance");
     lv_obj_set_style_text_color(title, lv_color_hex(OC_RED), 0);
-    lv_obj_set_style_text_font(title, &lv_font_montserrat_16, 0);
+    lv_obj_set_style_text_font(title, FONT_LG, 0);
     lv_obj_align(title, LV_ALIGN_LEFT_MID, 20, 0);
 
     *time_lbl = lv_label_create(bar);
     lv_label_set_text(*time_lbl, "--:--");
     lv_obj_set_style_text_color(*time_lbl, lv_color_hex(OC_TEXT_DIM), 0);
-    lv_obj_set_style_text_font(*time_lbl, &lv_font_montserrat_16, 0);
+    lv_obj_set_style_text_font(*time_lbl, FONT_LG, 0);
     lv_obj_align(*time_lbl, LV_ALIGN_RIGHT_MID, -4, 0);
 }
 
@@ -149,7 +167,7 @@ static void make_bar_row(lv_obj_t *parent, const char *label_text, int y, uint32
     lv_obj_t *lbl = lv_label_create(parent);
     lv_label_set_text(lbl, label_text);
     lv_obj_set_style_text_color(lbl, lv_color_hex(OC_TEXT_DIM), 0);
-    lv_obj_set_style_text_font(lbl, &lv_font_montserrat_12, 0);
+    lv_obj_set_style_text_font(lbl, FONT_SM, 0);
     lv_obj_set_pos(lbl, 12, y + 2);
 
     *out_bar = lv_bar_create(parent);
@@ -165,7 +183,7 @@ static void make_bar_row(lv_obj_t *parent, const char *label_text, int y, uint32
     *out_val = lv_label_create(parent);
     lv_label_set_text(*out_val, "0");
     lv_obj_set_style_text_color(*out_val, lv_color_hex(OC_TEXT), 0);
-    lv_obj_set_style_text_font(*out_val, &lv_font_montserrat_12, 0);
+    lv_obj_set_style_text_font(*out_val, FONT_SM, 0);
     lv_obj_set_pos(*out_val, 350, y + 2);
 }
 
@@ -179,9 +197,35 @@ static void build_dash_screen(lv_obj_t *parent) {
     // Z1: Status bar (y=0, h=28)
     build_status_bar(parent, &dash_time_lbl);
 
-    // Z2: Health strip (y=28, h=22)
+#ifdef CG_BOARD_CYD
+    #define HEALTH_H  18
+    #define HERO_H    20
+    #define CTX_DY    24
+    #define CARD_W    96
+    #define CARD_H    50
+    #define CARD_GAP  4
+    #define CARD_X0   8
+    #define BAR_W     140
+    #define BAR_X     70
+    #define BAR_PCT_X 218
+    #define ROW_DY    14
+#else
+    #define HEALTH_H  22
+    #define HERO_H    26
+    #define CTX_DY    32
+    #define CARD_W    148
+    #define CARD_H    72
+    #define CARD_GAP  6
+    #define CARD_X0   10
+    #define BAR_W     180
+    #define BAR_X     85
+    #define BAR_PCT_X 272
+    #define ROW_DY    16
+#endif
+
+    // Z2: Health strip
     lv_obj_t *health = lv_obj_create(parent);
-    lv_obj_set_size(health, W, 22);
+    lv_obj_set_size(health, W, HEALTH_H);
     lv_obj_set_pos(health, 0, BAR_H);
     lv_obj_set_style_bg_color(health, lv_color_hex(OC_BG), 0);
     lv_obj_set_style_border_side(health, LV_BORDER_SIDE_BOTTOM, 0);
@@ -198,18 +242,18 @@ static void build_dash_screen(lv_obj_t *parent) {
     dash_gw_lbl = lv_label_create(health);
     lv_label_set_text(dash_gw_lbl, LV_SYMBOL_WIFI " Gateway --");
     lv_obj_set_style_text_color(dash_gw_lbl, lv_color_hex(OC_TEXT_DIM), 0);
-    lv_obj_set_style_text_font(dash_gw_lbl, &lv_font_montserrat_12, 0);
+    lv_obj_set_style_text_font(dash_gw_lbl, FONT_SM, 0);
 
     dash_hb_lbl = lv_label_create(health);
     lv_label_set_text(dash_hb_lbl, LV_SYMBOL_OK " --");
     lv_obj_set_style_text_color(dash_hb_lbl, lv_color_hex(OC_TEXT_DIM), 0);
-    lv_obj_set_style_text_font(dash_hb_lbl, &lv_font_montserrat_12, 0);
+    lv_obj_set_style_text_font(dash_hb_lbl, FONT_SM, 0);
 
-    int y = 50;
+    int y = BAR_H + HEALTH_H;
 
-    // Z3: Agent status row (y=50, h=26)
+    // Z3: Agent status row
     lv_obj_t *hero = lv_obj_create(parent);
-    lv_obj_set_size(hero, W, 26);
+    lv_obj_set_size(hero, W, HERO_H);
     lv_obj_set_pos(hero, 0, y);
     lv_obj_set_style_bg_color(hero, lv_color_hex(OC_BG), 0);
     lv_obj_set_style_border_width(hero, 0, 0);
@@ -220,27 +264,27 @@ static void build_dash_screen(lv_obj_t *parent) {
     dash_status_lbl = lv_label_create(hero);
     lv_label_set_text(dash_status_lbl, LV_SYMBOL_PAUSE " IDLE");
     lv_obj_set_style_text_color(dash_status_lbl, lv_color_hex(OC_GREEN), 0);
-    lv_obj_set_style_text_font(dash_status_lbl, &lv_font_montserrat_16, 0);
+    lv_obj_set_style_text_font(dash_status_lbl, FONT_LG, 0);
     lv_obj_set_pos(dash_status_lbl, 14, 4);
 
     dash_session_lbl = lv_label_create(hero);
     lv_label_set_text(dash_session_lbl, "");
     lv_obj_set_style_text_color(dash_session_lbl, lv_color_hex(OC_TEXT_DIM), 0);
-    lv_obj_set_style_text_font(dash_session_lbl, &lv_font_montserrat_14, 0);
+    lv_obj_set_style_text_font(dash_session_lbl, FONT_MD, 0);
     lv_obj_set_pos(dash_session_lbl, 160, 6);
 
     dash_duration_lbl = lv_label_create(hero);
     lv_label_set_text(dash_duration_lbl, "");
     lv_obj_set_style_text_color(dash_duration_lbl, lv_color_hex(OC_TEXT_DIM), 0);
-    lv_obj_set_style_text_font(dash_duration_lbl, &lv_font_montserrat_14, 0);
-    lv_obj_align(dash_duration_lbl, LV_ALIGN_TOP_RIGHT, -14, 6);
-    y += 28;
+    lv_obj_set_style_text_font(dash_duration_lbl, FONT_MD, 0);
+    lv_obj_align(dash_duration_lbl, LV_ALIGN_TOP_RIGHT, -14, 4);
+    y += HERO_H + 2;
 
     // Z3b: Context bar — distinct section with breathing room
     dash_hero_ctx_lbl = lv_label_create(parent);
     lv_label_set_text(dash_hero_ctx_lbl, "Context: --");
     lv_obj_set_style_text_color(dash_hero_ctx_lbl, lv_color_hex(OC_TEXT_DIM), 0);
-    lv_obj_set_style_text_font(dash_hero_ctx_lbl, &lv_font_montserrat_12, 0);
+    lv_obj_set_style_text_font(dash_hero_ctx_lbl, FONT_SM, 0);
     lv_obj_set_pos(dash_hero_ctx_lbl, 14, y);
 
     dash_hero_bar = lv_bar_create(parent);
@@ -252,11 +296,11 @@ static void build_dash_screen(lv_obj_t *parent) {
     lv_obj_set_style_bg_color(dash_hero_bar, lv_color_hex(OC_GREEN), LV_PART_INDICATOR);
     lv_obj_set_style_radius(dash_hero_bar, 4, 0);
     lv_obj_set_style_radius(dash_hero_bar, 4, LV_PART_INDICATOR);
-    y += 32;
+    y += CTX_DY;
 
-    // Z4: Three metric cards (y=100, h=80)
-    int card_w = 148, card_h = 72, card_gap = 6;
-    int card_x1 = 10, card_x2 = card_x1 + card_w + card_gap, card_x3 = card_x2 + card_w + card_gap;
+    // Z4: Three metric cards
+    int card_w = CARD_W, card_h = CARD_H, card_gap = CARD_GAP;
+    int card_x1 = CARD_X0, card_x2 = card_x1 + card_w + card_gap, card_x3 = card_x2 + card_w + card_gap;
 
     // Cost card
     lv_obj_t *c1 = lv_obj_create(parent);
@@ -271,19 +315,19 @@ static void build_dash_screen(lv_obj_t *parent) {
     dash_cost_lbl = lv_label_create(c1);
     lv_label_set_text(dash_cost_lbl, "$--.--");
     lv_obj_set_style_text_color(dash_cost_lbl, lv_color_hex(OC_TEXT), 0);
-    lv_obj_set_style_text_font(dash_cost_lbl, &lv_font_montserrat_16, 0);
+    lv_obj_set_style_text_font(dash_cost_lbl, FONT_LG, 0);
     lv_obj_align(dash_cost_lbl, LV_ALIGN_TOP_MID, 0, 6);
 
     lv_obj_t *c1_sub = lv_label_create(c1);
     lv_label_set_text(c1_sub, "cost today");
     lv_obj_set_style_text_color(c1_sub, lv_color_hex(OC_TEXT_DIM), 0);
-    lv_obj_set_style_text_font(c1_sub, &lv_font_montserrat_12, 0);
+    lv_obj_set_style_text_font(c1_sub, FONT_SM, 0);
     lv_obj_align(c1_sub, LV_ALIGN_TOP_MID, 0, 28);
 
     dash_cost_rate_lbl = lv_label_create(c1);
     lv_label_set_text(dash_cost_rate_lbl, "");
     lv_obj_set_style_text_color(dash_cost_rate_lbl, lv_color_hex(OC_TEXT_DIM), 0);
-    lv_obj_set_style_text_font(dash_cost_rate_lbl, &lv_font_montserrat_12, 0);
+    lv_obj_set_style_text_font(dash_cost_rate_lbl, FONT_SM, 0);
     lv_obj_align(dash_cost_rate_lbl, LV_ALIGN_BOTTOM_MID, 0, -4);
 
     // Context card
@@ -299,13 +343,13 @@ static void build_dash_screen(lv_obj_t *parent) {
     dash_tokens_lbl = lv_label_create(c2);
     lv_label_set_text(dash_tokens_lbl, "--");
     lv_obj_set_style_text_color(dash_tokens_lbl, lv_color_hex(OC_TEAL), 0);
-    lv_obj_set_style_text_font(dash_tokens_lbl, &lv_font_montserrat_16, 0);
+    lv_obj_set_style_text_font(dash_tokens_lbl, FONT_LG, 0);
     lv_obj_align(dash_tokens_lbl, LV_ALIGN_TOP_MID, 0, 6);
 
     lv_obj_t *c2_sub = lv_label_create(c2);
     lv_label_set_text(c2_sub, "tokens today");
     lv_obj_set_style_text_color(c2_sub, lv_color_hex(OC_TEXT_DIM), 0);
-    lv_obj_set_style_text_font(c2_sub, &lv_font_montserrat_12, 0);
+    lv_obj_set_style_text_font(c2_sub, FONT_SM, 0);
     lv_obj_align(c2_sub, LV_ALIGN_TOP_MID, 0, 28);
 
     // Sessions card
@@ -321,19 +365,19 @@ static void build_dash_screen(lv_obj_t *parent) {
     dash_sess_lbl = lv_label_create(c3);
     lv_label_set_text(dash_sess_lbl, "0 active");
     lv_obj_set_style_text_color(dash_sess_lbl, lv_color_hex(OC_TEXT), 0);
-    lv_obj_set_style_text_font(dash_sess_lbl, &lv_font_montserrat_16, 0);
+    lv_obj_set_style_text_font(dash_sess_lbl, FONT_LG, 0);
     lv_obj_align(dash_sess_lbl, LV_ALIGN_TOP_MID, 0, 6);
 
     lv_obj_t *c3_sub = lv_label_create(c3);
     lv_label_set_text(c3_sub, "active sessions");
     lv_obj_set_style_text_color(c3_sub, lv_color_hex(OC_TEXT_DIM), 0);
-    lv_obj_set_style_text_font(c3_sub, &lv_font_montserrat_12, 0);
+    lv_obj_set_style_text_font(c3_sub, FONT_SM, 0);
     lv_obj_align(c3_sub, LV_ALIGN_TOP_MID, 0, 28);
 
     dash_sess_active_lbl = lv_label_create(c3);
     lv_label_set_text(dash_sess_active_lbl, "");
     lv_obj_set_style_text_color(dash_sess_active_lbl, lv_color_hex(OC_TEXT_DIM), 0);
-    lv_obj_set_style_text_font(dash_sess_active_lbl, &lv_font_montserrat_12, 0);
+    lv_obj_set_style_text_font(dash_sess_active_lbl, FONT_SM, 0);
     lv_obj_align(dash_sess_active_lbl, LV_ALIGN_BOTTOM_MID, 0, -4);
     y += card_h + 4;
 
@@ -342,7 +386,7 @@ static void build_dash_screen(lv_obj_t *parent) {
     dash_model_lbl = lv_label_create(parent);
     lv_label_set_text(dash_model_lbl, "");
     lv_obj_set_style_text_color(dash_model_lbl, lv_color_hex(OC_TEAL), 0);
-    lv_obj_set_style_text_font(dash_model_lbl, &lv_font_montserrat_12, 0);
+    lv_obj_set_style_text_font(dash_model_lbl, FONT_SM, 0);
     lv_obj_set_pos(dash_model_lbl, 10, y + 2);
     y += 16;
 
@@ -350,12 +394,12 @@ static void build_dash_screen(lv_obj_t *parent) {
     dash_bw_lbl = lv_label_create(parent);
     lv_label_set_text(dash_bw_lbl, "5h window");
     lv_obj_set_style_text_color(dash_bw_lbl, lv_color_hex(OC_TEXT_DIM), 0);
-    lv_obj_set_style_text_font(dash_bw_lbl, &lv_font_montserrat_12, 0);
+    lv_obj_set_style_text_font(dash_bw_lbl, FONT_SM, 0);
     lv_obj_set_pos(dash_bw_lbl, 10, y + 2);
 
     dash_bw_bar = lv_bar_create(parent);
-    lv_obj_set_size(dash_bw_bar, 180, 10);
-    lv_obj_set_pos(dash_bw_bar, 85, y + 4);
+    lv_obj_set_size(dash_bw_bar, BAR_W, 10);
+    lv_obj_set_pos(dash_bw_bar, BAR_X, y + 4);
     lv_bar_set_range(dash_bw_bar, 0, 100);
     lv_obj_set_style_bg_color(dash_bw_bar, lv_color_hex(OC_BORDER), 0);
     lv_obj_set_style_bg_color(dash_bw_bar, lv_color_hex(OC_GREEN), LV_PART_INDICATOR);
@@ -365,20 +409,20 @@ static void build_dash_screen(lv_obj_t *parent) {
     dash_bw_pct = lv_label_create(parent);
     lv_label_set_text(dash_bw_pct, "--%");
     lv_obj_set_style_text_color(dash_bw_pct, lv_color_hex(OC_TEXT), 0);
-    lv_obj_set_style_text_font(dash_bw_pct, &lv_font_montserrat_12, 0);
-    lv_obj_set_pos(dash_bw_pct, 272, y + 2);
-    y += 16;
+    lv_obj_set_style_text_font(dash_bw_pct, FONT_SM, 0);
+    lv_obj_set_pos(dash_bw_pct, BAR_PCT_X, y + 2);
+    y += ROW_DY;
 
     // Row 2: week bar
     dash_bwk_lbl = lv_label_create(parent);
     lv_label_set_text(dash_bwk_lbl, "Week");
     lv_obj_set_style_text_color(dash_bwk_lbl, lv_color_hex(OC_TEXT_DIM), 0);
-    lv_obj_set_style_text_font(dash_bwk_lbl, &lv_font_montserrat_12, 0);
+    lv_obj_set_style_text_font(dash_bwk_lbl, FONT_SM, 0);
     lv_obj_set_pos(dash_bwk_lbl, 10, y + 2);
 
     dash_bwk_bar = lv_bar_create(parent);
-    lv_obj_set_size(dash_bwk_bar, 180, 10);
-    lv_obj_set_pos(dash_bwk_bar, 85, y + 4);
+    lv_obj_set_size(dash_bwk_bar, BAR_W, 10);
+    lv_obj_set_pos(dash_bwk_bar, BAR_X, y + 4);
     lv_bar_set_range(dash_bwk_bar, 0, 100);
     lv_obj_set_style_bg_color(dash_bwk_bar, lv_color_hex(OC_BORDER), 0);
     lv_obj_set_style_bg_color(dash_bwk_bar, lv_color_hex(OC_GREEN), LV_PART_INDICATOR);
@@ -388,20 +432,20 @@ static void build_dash_screen(lv_obj_t *parent) {
     dash_bwk_pct = lv_label_create(parent);
     lv_label_set_text(dash_bwk_pct, "--%");
     lv_obj_set_style_text_color(dash_bwk_pct, lv_color_hex(OC_TEXT), 0);
-    lv_obj_set_style_text_font(dash_bwk_pct, &lv_font_montserrat_12, 0);
-    lv_obj_set_pos(dash_bwk_pct, 272, y + 2);
-    y += 16;
+    lv_obj_set_style_text_font(dash_bwk_pct, FONT_SM, 0);
+    lv_obj_set_pos(dash_bwk_pct, BAR_PCT_X, y + 2);
+    y += ROW_DY;
 
     // Row 3: cache hit bar
     lv_obj_t *ch_lbl = lv_label_create(parent);
     lv_label_set_text(ch_lbl, "Cache hit");
     lv_obj_set_style_text_color(ch_lbl, lv_color_hex(OC_TEXT_DIM), 0);
-    lv_obj_set_style_text_font(ch_lbl, &lv_font_montserrat_12, 0);
+    lv_obj_set_style_text_font(ch_lbl, FONT_SM, 0);
     lv_obj_set_pos(ch_lbl, 10, y + 2);
 
     dash_cache_bar = lv_bar_create(parent);
-    lv_obj_set_size(dash_cache_bar, 180, 10);
-    lv_obj_set_pos(dash_cache_bar, 85, y + 4);
+    lv_obj_set_size(dash_cache_bar, BAR_W, 10);
+    lv_obj_set_pos(dash_cache_bar, BAR_X, y + 4);
     lv_bar_set_range(dash_cache_bar, 0, 100);
     lv_obj_set_style_bg_color(dash_cache_bar, lv_color_hex(OC_BORDER), 0);
     lv_obj_set_style_bg_color(dash_cache_bar, lv_color_hex(OC_TEAL), LV_PART_INDICATOR);
@@ -411,9 +455,9 @@ static void build_dash_screen(lv_obj_t *parent) {
     dash_cache_pct = lv_label_create(parent);
     lv_label_set_text(dash_cache_pct, "--%");
     lv_obj_set_style_text_color(dash_cache_pct, lv_color_hex(OC_TEXT), 0);
-    lv_obj_set_style_text_font(dash_cache_pct, &lv_font_montserrat_12, 0);
-    lv_obj_set_pos(dash_cache_pct, 272, y + 2);
-    y += 18;
+    lv_obj_set_style_text_font(dash_cache_pct, FONT_SM, 0);
+    lv_obj_set_pos(dash_cache_pct, BAR_PCT_X, y + 2);
+    y += ROW_DY + 2;
 
     build_nav_bar(parent, 0);
 }
@@ -432,7 +476,7 @@ static void build_activity_screen(lv_obj_t *parent) {
     lv_obj_t *hdr = lv_label_create(parent);
     lv_label_set_text(hdr, LV_SYMBOL_LIST " Session Activity");
     lv_obj_set_style_text_color(hdr, lv_color_hex(OC_TEAL), 0);
-    lv_obj_set_style_text_font(hdr, &lv_font_montserrat_14, 0);
+    lv_obj_set_style_text_font(hdr, FONT_MD, 0);
     lv_obj_set_pos(hdr, 12, BAR_H + 4);
 
     // Scrollable container for transcript rows
@@ -460,7 +504,8 @@ void activity_update(const app_state_t *state) {
     // Build a simple hash from count + last entry text to detect changes
     char hash[64] = "";
     if (state->transcript_count > 0) {
-        snprintf(hash, sizeof(hash), "%d:%s",
+        // Bound text to fit within hash[64] — used only for change detection.
+        snprintf(hash, sizeof(hash), "%d:%.50s",
             state->transcript_count,
             state->transcript[state->transcript_count - 1].text);
     }
@@ -496,7 +541,7 @@ void activity_update(const app_state_t *state) {
         lv_label_set_long_mode(row, LV_LABEL_LONG_WRAP);
         lv_obj_set_width(row, W - 20);
         lv_obj_set_style_text_color(row, lv_color_hex(color), 0);
-        lv_obj_set_style_text_font(row, &lv_font_montserrat_12, 0);
+        lv_obj_set_style_text_font(row, FONT_SM, 0);
     }
 
     // Scroll to bottom to show latest
@@ -532,7 +577,7 @@ static void init_backlight_pwm(void) {
     };
     ledc_timer_config(&timer);
     ledc_channel_config_t channel = {
-        .gpio_num = 1,  // GPIO_LCD_BL
+        .gpio_num = CG_BL_GPIO,
         .speed_mode = LEDC_LOW_SPEED_MODE,
         .channel = LEDC_CHANNEL_0,
         .timer_sel = LEDC_TIMER_0,
@@ -669,7 +714,7 @@ static void build_send_screen(lv_obj_t *parent) {
     lv_obj_t *title = lv_label_create(bar);
     lv_label_set_text(title, LV_SYMBOL_SETTINGS " Controls");
     lv_obj_set_style_text_color(title, lv_color_hex(OC_TEAL), 0);
-    lv_obj_set_style_text_font(title, &lv_font_montserrat_14, 0);
+    lv_obj_set_style_text_font(title, FONT_MD, 0);
     lv_obj_align(title, LV_ALIGN_LEFT_MID, 0, 0);
 
     // Action buttons — same row
@@ -681,7 +726,7 @@ static void build_send_screen(lv_obj_t *parent) {
     lv_obj_set_style_radius(status_btn, 8, 0);
     lv_obj_t *s_lbl = lv_label_create(status_btn);
     lv_label_set_text(s_lbl, LV_SYMBOL_DOWNLOAD " /Status");
-    lv_obj_set_style_text_font(s_lbl, &lv_font_montserrat_12, 0);
+    lv_obj_set_style_text_font(s_lbl, FONT_SM, 0);
     lv_obj_center(s_lbl);
     lv_obj_set_user_data(status_btn, (void *)(intptr_t)1);
     lv_obj_add_event_cb(status_btn, cmd_btn_handler, LV_EVENT_CLICKED, NULL);
@@ -693,7 +738,7 @@ static void build_send_screen(lv_obj_t *parent) {
     lv_obj_set_style_radius(btn, 8, 0);
     lv_obj_t *lbl = lv_label_create(btn);
     lv_label_set_text(lbl, LV_SYMBOL_REFRESH " Restart GW");
-    lv_obj_set_style_text_font(lbl, &lv_font_montserrat_12, 0);
+    lv_obj_set_style_text_font(lbl, FONT_SM, 0);
     lv_obj_center(lbl);
     lv_obj_set_user_data(btn, (void *)(intptr_t)0);
     lv_obj_add_event_cb(btn, cmd_btn_handler, LV_EVENT_CLICKED, NULL);
@@ -703,7 +748,7 @@ static void build_send_screen(lv_obj_t *parent) {
     lv_obj_t *bright_lbl = lv_label_create(parent);
     lv_label_set_text(bright_lbl, LV_SYMBOL_IMAGE " Brightness");
     lv_obj_set_style_text_color(bright_lbl, lv_color_hex(OC_TEXT_DIM), 0);
-    lv_obj_set_style_text_font(bright_lbl, &lv_font_montserrat_12, 0);
+    lv_obj_set_style_text_font(bright_lbl, FONT_SM, 0);
     lv_obj_set_pos(bright_lbl, 20, slider_y + 4);
 
     lv_obj_t *slider = lv_slider_create(parent);
@@ -750,7 +795,7 @@ static void build_send_screen(lv_obj_t *parent) {
     lv_obj_set_style_radius(wifi_btn, 8, 0);
     lv_obj_t *wifi_btn_lbl = lv_label_create(wifi_btn);
     lv_label_set_text(wifi_btn_lbl, LV_SYMBOL_WIFI " Configure WiFi");
-    lv_obj_set_style_text_font(wifi_btn_lbl, &lv_font_montserrat_12, 0);
+    lv_obj_set_style_text_font(wifi_btn_lbl, FONT_SM, 0);
     lv_obj_center(wifi_btn_lbl);
 
     cfg_y += 40;
@@ -771,7 +816,7 @@ static void build_send_screen(lv_obj_t *parent) {
     lv_obj_t *wifi_lbl = lv_label_create(wifi_container);
     lv_label_set_text(wifi_lbl, "SSID");
     lv_obj_set_style_text_color(wifi_lbl, lv_color_hex(OC_TEXT_DIM), 0);
-    lv_obj_set_style_text_font(wifi_lbl, &lv_font_montserrat_12, 0);
+    lv_obj_set_style_text_font(wifi_lbl, FONT_SM, 0);
     lv_obj_set_pos(wifi_lbl, 4, 6);
 
     s_wifi_ta = lv_textarea_create(wifi_container);
@@ -781,7 +826,7 @@ static void build_send_screen(lv_obj_t *parent) {
     lv_textarea_set_placeholder_text(s_wifi_ta, "SSID");
     lv_obj_set_style_bg_color(s_wifi_ta, lv_color_hex(OC_BG), 0);
     lv_obj_set_style_text_color(s_wifi_ta, lv_color_hex(OC_TEXT), 0);
-    lv_obj_set_style_text_font(s_wifi_ta, &lv_font_montserrat_12, 0);
+    lv_obj_set_style_text_font(s_wifi_ta, FONT_SM, 0);
     lv_obj_set_style_border_color(s_wifi_ta, lv_color_hex(OC_BORDER), 0);
     {
         char buf[33] = "";
@@ -801,7 +846,7 @@ static void build_send_screen(lv_obj_t *parent) {
     lv_obj_t *pass_lbl = lv_label_create(wifi_container);
     lv_label_set_text(pass_lbl, "Pass");
     lv_obj_set_style_text_color(pass_lbl, lv_color_hex(OC_TEXT_DIM), 0);
-    lv_obj_set_style_text_font(pass_lbl, &lv_font_montserrat_12, 0);
+    lv_obj_set_style_text_font(pass_lbl, FONT_SM, 0);
     lv_obj_set_pos(pass_lbl, 4, 38);
 
     s_pass_ta = lv_textarea_create(wifi_container);
@@ -812,7 +857,7 @@ static void build_send_screen(lv_obj_t *parent) {
     lv_textarea_set_password_mode(s_pass_ta, true);
     lv_obj_set_style_bg_color(s_pass_ta, lv_color_hex(OC_BG), 0);
     lv_obj_set_style_text_color(s_pass_ta, lv_color_hex(OC_TEXT), 0);
-    lv_obj_set_style_text_font(s_pass_ta, &lv_font_montserrat_12, 0);
+    lv_obj_set_style_text_font(s_pass_ta, FONT_SM, 0);
     lv_obj_set_style_border_color(s_pass_ta, lv_color_hex(OC_BORDER), 0);
     {
         char buf[65] = "";
@@ -846,7 +891,7 @@ static void build_send_screen(lv_obj_t *parent) {
     lv_obj_set_style_radius(save_btn, 8, 0);
     lv_obj_t *save_lbl = lv_label_create(save_btn);
     lv_label_set_text(save_lbl, LV_SYMBOL_SAVE " Save & Reboot");
-    lv_obj_set_style_text_font(save_lbl, &lv_font_montserrat_14, 0);
+    lv_obj_set_style_text_font(save_lbl, FONT_MD, 0);
     lv_obj_center(save_lbl);
     lv_obj_add_event_cb(save_btn, save_config_handler, LV_EVENT_CLICKED, NULL);
 
@@ -854,7 +899,7 @@ static void build_send_screen(lv_obj_t *parent) {
     send_response_lbl = lv_label_create(parent);
     lv_label_set_text(send_response_lbl, "");
     lv_obj_set_style_text_color(send_response_lbl, lv_color_hex(OC_TEXT_DIM), 0);
-    lv_obj_set_style_text_font(send_response_lbl, &lv_font_montserrat_12, 0);
+    lv_obj_set_style_text_font(send_response_lbl, FONT_SM, 0);
     lv_obj_set_pos(send_response_lbl, 20, cfg_y + 126);
 
     build_nav_bar(parent, 2);
@@ -909,7 +954,7 @@ static void build_about_screen(lv_obj_t *parent) {
     lv_obj_t *cg = lv_label_create(parent);
     lv_label_set_text(cg, "ClawGlance");
     lv_obj_set_style_text_color(cg, lv_color_hex(OC_RED), 0);
-    lv_obj_set_style_text_font(cg, &lv_font_montserrat_16, 0);
+    lv_obj_set_style_text_font(cg, FONT_LG, 0);
     lv_obj_align(cg, LV_ALIGN_TOP_MID, 0, y);
     y += 22;
 
@@ -917,7 +962,7 @@ static void build_about_screen(lv_obj_t *parent) {
     lv_obj_t *cgv = lv_label_create(parent);
     lv_label_set_text(cgv, "v" CLAWGLANCE_VERSION);
     lv_obj_set_style_text_color(cgv, lv_color_hex(OC_TEXT_DIM), 0);
-    lv_obj_set_style_text_font(cgv, &lv_font_montserrat_12, 0);
+    lv_obj_set_style_text_font(cgv, FONT_SM, 0);
     lv_obj_align(cgv, LV_ALIGN_TOP_MID, 0, y);
     y += 24;
 
@@ -934,15 +979,21 @@ static void build_about_screen(lv_obj_t *parent) {
     lv_obj_t *oc = lv_label_create(parent);
     lv_label_set_text(oc, "OpenClaw v2026.3.24");
     lv_obj_set_style_text_color(oc, lv_color_hex(OC_TEAL), 0);
-    lv_obj_set_style_text_font(oc, &lv_font_montserrat_14, 0);
+    lv_obj_set_style_text_font(oc, FONT_MD, 0);
     lv_obj_align(oc, LV_ALIGN_TOP_MID, 0, y);
     y += 24;
 
     // System info
     lv_obj_t *info = lv_label_create(parent);
+#if defined(CG_BOARD_CYD)
+    lv_label_set_text(info, "ESP32 CYD | 320x240 | ILI9341");
+#elif defined(CG_BOARD_CYD35)
+    lv_label_set_text(info, "ESP32 CYD | 480x320 | ST7796U");
+#else
     lv_label_set_text(info, "ESP32-S3 | 480x320 | 8MB PSRAM");
+#endif
     lv_obj_set_style_text_color(info, lv_color_hex(OC_TEXT_DIM), 0);
-    lv_obj_set_style_text_font(info, &lv_font_montserrat_12, 0);
+    lv_obj_set_style_text_font(info, FONT_SM, 0);
     lv_obj_align(info, LV_ALIGN_TOP_MID, 0, y);
     y += 18;
 
@@ -952,7 +1003,7 @@ static void build_about_screen(lv_obj_t *parent) {
     snprintf(gw_buf, sizeof(gw_buf), "Gateway: %s:%d", CG_OC_HOST, CG_OC_PORT);
     lv_label_set_text(gw, gw_buf);
     lv_obj_set_style_text_color(gw, lv_color_hex(OC_TEXT_DIM), 0);
-    lv_obj_set_style_text_font(gw, &lv_font_montserrat_12, 0);
+    lv_obj_set_style_text_font(gw, FONT_SM, 0);
     lv_obj_align(gw, LV_ALIGN_TOP_MID, 0, y);
     y += 18;
 
@@ -962,7 +1013,7 @@ static void build_about_screen(lv_obj_t *parent) {
     snprintf(br_buf, sizeof(br_buf), "Plugin: %s:%d", CG_OC_HOST, CG_OC_PORT);
     lv_label_set_text(br, br_buf);
     lv_obj_set_style_text_color(br, lv_color_hex(OC_TEXT_DIM), 0);
-    lv_obj_set_style_text_font(br, &lv_font_montserrat_12, 0);
+    lv_obj_set_style_text_font(br, FONT_SM, 0);
     lv_obj_align(br, LV_ALIGN_TOP_MID, 0, y);
     y += 28;
 
@@ -970,14 +1021,14 @@ static void build_about_screen(lv_obj_t *parent) {
     lv_obj_t *credits = lv_label_create(parent);
     lv_label_set_text(credits, "Built with Claude Code");
     lv_obj_set_style_text_color(credits, lv_color_hex(OC_TEXT_MUT), 0);
-    lv_obj_set_style_text_font(credits, &lv_font_montserrat_12, 0);
+    lv_obj_set_style_text_font(credits, FONT_SM, 0);
     lv_obj_align(credits, LV_ALIGN_TOP_MID, 0, y);
 
     // Hint
     lv_obj_t *hint = lv_label_create(parent);
     lv_label_set_text(hint, "Swipe left to go back");
     lv_obj_set_style_text_color(hint, lv_color_hex(OC_TEXT_MUT), 0);
-    lv_obj_set_style_text_font(hint, &lv_font_montserrat_12, 0);
+    lv_obj_set_style_text_font(hint, FONT_SM, 0);
     lv_obj_align(hint, LV_ALIGN_BOTTOM_MID, 0, -16);
 
     // Swipe gesture
