@@ -573,17 +573,35 @@ static void brightness_slider_handler(lv_event_t *e) {
     save_brightness((uint8_t)val);
 }
 
-// Text area focus/defocus — show/hide keyboard
+// Text area focus/defocus — show/hide keyboard and scroll into view
 static void cfg_ta_focus_handler(lv_event_t *e) {
     lv_obj_t *kb = (lv_obj_t *)lv_event_get_user_data(e);
     lv_obj_t *ta = lv_event_get_target(e);
     lv_keyboard_set_textarea(kb, ta);
     lv_obj_clear_flag(kb, LV_OBJ_FLAG_HIDDEN);
+
+    // Scroll parent so the textarea is visible above the keyboard
+    // Keyboard is 140px at bottom of 320px screen, so visible area = 180px
+    lv_obj_t *parent = lv_obj_get_parent(kb);
+    lv_coord_t ta_y = lv_obj_get_y(ta);
+    // If textarea is inside a container, add the container's y offset
+    lv_obj_t *ta_parent = lv_obj_get_parent(ta);
+    if (ta_parent != parent) {
+        ta_y += lv_obj_get_y(ta_parent);
+    }
+    lv_coord_t kb_top = CG_SCREEN_HEIGHT - 140;  // keyboard starts at 180px
+    lv_coord_t ta_bottom = ta_y + lv_obj_get_height(ta) + 10;
+    if (ta_bottom > kb_top) {
+        lv_obj_scroll_to_y(parent, ta_bottom - kb_top + 20, LV_ANIM_ON);
+    }
 }
 
 static void cfg_ta_defocus_handler(lv_event_t *e) {
     lv_obj_t *kb = (lv_obj_t *)lv_event_get_user_data(e);
     lv_obj_add_flag(kb, LV_OBJ_FLAG_HIDDEN);
+    // Scroll back to top
+    lv_obj_t *parent = lv_obj_get_parent(kb);
+    lv_obj_scroll_to_y(parent, 0, LV_ANIM_ON);
 }
 
 // Collapsible section toggle handler
