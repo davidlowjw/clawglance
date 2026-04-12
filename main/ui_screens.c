@@ -42,7 +42,6 @@ static lv_obj_t *dash_time_lbl = NULL;
 // Z2: Health strip
 static lv_obj_t *dash_gw_lbl = NULL;
 static lv_obj_t *dash_hb_lbl = NULL;
-static lv_obj_t *dash_bridge_lbl = NULL;
 static lv_obj_t *dash_model_lbl = NULL;
 // Z3: Agent hero
 static lv_obj_t *dash_status_lbl = NULL;
@@ -200,11 +199,6 @@ static void build_dash_screen(lv_obj_t *parent) {
     lv_label_set_text(dash_gw_lbl, LV_SYMBOL_WIFI " Gateway --");
     lv_obj_set_style_text_color(dash_gw_lbl, lv_color_hex(OC_TEXT_DIM), 0);
     lv_obj_set_style_text_font(dash_gw_lbl, &lv_font_montserrat_12, 0);
-
-    dash_bridge_lbl = lv_label_create(health);
-    lv_label_set_text(dash_bridge_lbl, LV_SYMBOL_LOOP " Bridge --");
-    lv_obj_set_style_text_color(dash_bridge_lbl, lv_color_hex(OC_TEXT_DIM), 0);
-    lv_obj_set_style_text_font(dash_bridge_lbl, &lv_font_montserrat_12, 0);
 
     dash_hb_lbl = lv_label_create(health);
     lv_label_set_text(dash_hb_lbl, LV_SYMBOL_OK " --");
@@ -926,10 +920,10 @@ static void build_about_screen(lv_obj_t *parent) {
     lv_obj_align(gw, LV_ALIGN_TOP_MID, 0, y);
     y += 18;
 
-    // Bridge info
+    // Plugin info (replaces bridge)
     lv_obj_t *br = lv_label_create(parent);
     char br_buf[48];
-    snprintf(br_buf, sizeof(br_buf), "Bridge: %s:%d", CG_OC_HOST, CG_OC_DASH_PORT);
+    snprintf(br_buf, sizeof(br_buf), "Plugin: %s:%d", CG_OC_HOST, CG_OC_PORT);
     lv_label_set_text(br, br_buf);
     lv_obj_set_style_text_color(br, lv_color_hex(OC_TEXT_DIM), 0);
     lv_obj_set_style_text_font(br, &lv_font_montserrat_12, 0);
@@ -1001,14 +995,10 @@ void dash_update_time(const char *time_str) {
     if (act_time_lbl) lv_label_set_text(act_time_lbl, time_str);
 }
 
-void dash_update_health(bool gw_online, bool bridge_online, uint32_t last_fetch_age_s, const char *model) {
+void dash_update_health(bool gw_online, uint32_t last_fetch_age_s, const char *model) {
     if (dash_gw_lbl) {
         lv_label_set_text(dash_gw_lbl, gw_online ? LV_SYMBOL_WIFI " Gateway OK" : LV_SYMBOL_WIFI " Gateway --");
         lv_obj_set_style_text_color(dash_gw_lbl, lv_color_hex(gw_online ? OC_GREEN : OC_RED), 0);
-    }
-    if (dash_bridge_lbl) {
-        lv_label_set_text(dash_bridge_lbl, bridge_online ? LV_SYMBOL_LOOP " Bridge OK" : LV_SYMBOL_LOOP " Bridge --");
-        lv_obj_set_style_text_color(dash_bridge_lbl, lv_color_hex(bridge_online ? OC_GREEN : OC_RED), 0);
     }
     if (dash_hb_lbl) {
         char buf[20];
@@ -1100,8 +1090,8 @@ void dash_update_sessions(uint8_t active, uint8_t total) {
 }
 
 void dash_update_info(uint8_t budget_window_pct, const char *window_label, uint8_t budget_week_pct, uint8_t cache_hit_pct) {
-    // Window budget bar — show USED (100 - remaining)
-    uint8_t win_used = budget_window_pct > 100 ? 0 : 100 - budget_window_pct;
+    // Window budget bar — value is already "used" percentage from plugin
+    uint8_t win_used = budget_window_pct > 100 ? 100 : budget_window_pct;
     if (dash_bw_lbl && window_label && window_label[0]) {
         char buf[16];
         snprintf(buf, sizeof(buf), "%s window", window_label);
@@ -1120,8 +1110,8 @@ void dash_update_info(uint8_t budget_window_pct, const char *window_label, uint8
         lv_obj_set_style_text_color(dash_bw_pct, lv_color_hex(c), 0);
     }
 
-    // Week budget bar — show USED
-    uint8_t week_used = budget_week_pct > 100 ? 0 : 100 - budget_week_pct;
+    // Week budget bar — value is already "used" percentage from plugin
+    uint8_t week_used = budget_week_pct > 100 ? 100 : budget_week_pct;
     if (dash_bwk_bar) {
         lv_bar_set_value(dash_bwk_bar, week_used, LV_ANIM_ON);
         uint32_t c = week_used < 50 ? OC_GREEN : (week_used < 75 ? OC_AMBER : OC_RED);

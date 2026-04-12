@@ -9,7 +9,6 @@
 static const char *TAG = "oc_client";
 
 static char s_gw_url[128];
-static char s_dash_url[128];
 static char s_auth_header[256];
 
 // Response buffer for HTTP reads
@@ -54,12 +53,11 @@ static bool do_get(const char *url, int timeout_ms) {
     return (err == ESP_OK && status >= 200 && status < 300);
 }
 
-void oc_client_init(const char *host, uint16_t port, const char *token, uint16_t dash_port) {
+void oc_client_init(const char *host, uint16_t port, const char *token) {
     const char *scheme = CG_OC_USE_HTTPS ? "https" : "http";
     snprintf(s_gw_url, sizeof(s_gw_url), "%s://%s:%d", scheme, host, port);
-    snprintf(s_dash_url, sizeof(s_dash_url), "%s://%s:%d", scheme, host, dash_port);
     snprintf(s_auth_header, sizeof(s_auth_header), "Bearer %s", token);
-    ESP_LOGI(TAG, "Gateway: %s, Dashboard: %s", s_gw_url, s_dash_url);
+    ESP_LOGI(TAG, "Gateway: %s", s_gw_url);
 }
 
 bool oc_check_health(void) {
@@ -70,17 +68,9 @@ bool oc_check_health(void) {
     return ok;
 }
 
-bool oc_check_dashboard(void) {
-    char url[192];
-    snprintf(url, sizeof(url), "%s/api/system", s_dash_url);
-    bool result = do_get(url, 3000);
-    ESP_LOGI(TAG, "Dashboard: %s", result ? "available" : "not found");
-    return result;
-}
-
 bool oc_fetch_sessions(session_info_t *sessions, uint8_t *count, uint8_t max_count) {
     char url[192];
-    snprintf(url, sizeof(url), "%s/api/sessions", s_dash_url);
+    snprintf(url, sizeof(url), "%s/api/clawglance/sessions", s_gw_url);
 
     if (!do_get(url, 3000)) {
         ESP_LOGW(TAG, "Fetch sessions failed");
@@ -151,7 +141,7 @@ bool oc_fetch_sessions(session_info_t *sessions, uint8_t *count, uint8_t max_cou
 
 bool oc_fetch_costs(float *cost_today, uint32_t *tokens_today) {
     char url[192];
-    snprintf(url, sizeof(url), "%s/api/costs", s_dash_url);
+    snprintf(url, sizeof(url), "%s/api/clawglance/costs", s_gw_url);
     if (!do_get(url, 3000)) {
         ESP_LOGW(TAG, "Costs: HTTP request failed");
         return false;
@@ -179,7 +169,7 @@ bool oc_fetch_costs(float *cost_today, uint32_t *tokens_today) {
 bool oc_fetch_system_info(gateway_state_t *state) {
 
     char url[192];
-    snprintf(url, sizeof(url), "%s/api/system", s_dash_url);
+    snprintf(url, sizeof(url), "%s/api/clawglance/system", s_gw_url);
     if (!do_get(url, 3000)) return false;
 
     cJSON *root = cJSON_Parse(s_http_buf);
@@ -210,7 +200,7 @@ bool oc_fetch_system_info(gateway_state_t *state) {
 
 bool oc_fetch_telemetry(telemetry_t *t) {
     char url[192];
-    snprintf(url, sizeof(url), "%s/api/telemetry", s_dash_url);
+    snprintf(url, sizeof(url), "%s/api/clawglance/telemetry", s_gw_url);
     if (!do_get(url, 3000)) return false;
 
     cJSON *root = cJSON_Parse(s_http_buf);
@@ -270,7 +260,7 @@ bool oc_fetch_telemetry(telemetry_t *t) {
 
 bool oc_fetch_activity(app_state_t *state) {
     char url[192];
-    snprintf(url, sizeof(url), "%s/api/activity", s_dash_url);
+    snprintf(url, sizeof(url), "%s/api/clawglance/activity", s_gw_url);
     if (!do_get(url, 3000)) return false;
 
     cJSON *root = cJSON_Parse(s_http_buf);
@@ -299,7 +289,7 @@ bool oc_fetch_activity(app_state_t *state) {
 
 bool oc_fetch_transcript(app_state_t *state) {
     char url[192];
-    snprintf(url, sizeof(url), "%s/api/transcript", s_dash_url);
+    snprintf(url, sizeof(url), "%s/api/clawglance/transcript", s_gw_url);
     if (!do_get(url, 3000)) return false;
 
     cJSON *root = cJSON_Parse(s_http_buf);
@@ -334,7 +324,7 @@ bool oc_fetch_transcript(app_state_t *state) {
 
 bool oc_send_chat(const char *message, char *response, int response_len) {
     char url[192];
-    snprintf(url, sizeof(url), "%s/v1/chat/completions", s_dash_url);
+    snprintf(url, sizeof(url), "%s/api/clawglance/chat", s_gw_url);
 
     cJSON *body = cJSON_CreateObject();
     cJSON_AddStringToObject(body, "model", "openclaw");

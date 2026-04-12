@@ -78,9 +78,7 @@ typedef struct {
     uint32_t last_poll_time;
     uint32_t last_health_time;
     char time_string[24];
-    bool dashboard_available;
     uint32_t last_session_fetch;
-    uint32_t last_dash_check;
     // Activity feed (last 4 gateway events)
     struct {
         char ts[6];

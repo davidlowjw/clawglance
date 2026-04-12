@@ -11,7 +11,7 @@ void ui_switch_to(screen_t screen);
 
 // Dashboard updates
 void dash_update_time(const char *time_str);
-void dash_update_health(bool gw_online, bool bridge_online, uint32_t last_fetch_age_s, const char *model);
+void dash_update_health(bool gw_online, uint32_t last_fetch_age_s, const char *model);
 void dash_update_activity(agent_status_t status, const char *session_label, uint32_t duration_s, uint8_t context_pct, uint32_t context_used, uint32_t context_max);
 void dash_update_cost(float cost_today, float rate_per_hour);
 void dash_update_tokens(uint32_t tokens_today);

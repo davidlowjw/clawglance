@@ -4,9 +4,8 @@
 #include <stdint.h>
 #include "app_state.h"
 
-void oc_client_init(const char *host, uint16_t port, const char *token, uint16_t dash_port);
+void oc_client_init(const char *host, uint16_t port, const char *token);
 bool oc_check_health(void);
-bool oc_check_dashboard(void);
 bool oc_fetch_sessions(session_info_t *sessions, uint8_t *count, uint8_t max_count);
 bool oc_fetch_costs(float *cost_today, uint32_t *tokens_today);
 bool oc_fetch_system_info(gateway_state_t *state);

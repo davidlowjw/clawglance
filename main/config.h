@@ -21,10 +21,8 @@
 #define CG_OC_AGENT_ID      "main"
 #define CG_OC_USE_HTTPS     0
 
-// --- Bridge (bridge.py running on same machine as OpenClaw) ---
-#define CG_OC_DASH_PORT     7001
+// --- Sessions ---
 #define CG_SESSIONS_MAX     8
-#define CG_DASH_CHECK_MS    300000
 
 // --- Polling ---
 #define CG_POLL_INTERVAL_MS 5000

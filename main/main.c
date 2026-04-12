@@ -105,7 +105,7 @@ static void main_task(void *arg) {
         tick++;
         uint32_t t = now_ms();
 
-        // Gateway health check every 30s (direct to gateway, not via bridge)
+        // Gateway health check every 30s
         if (wifi_mgr_is_connected() && (t - app.last_health_time > 30000)) {
             app.last_health_time = t;
             app.gateway.healthy = oc_check_health();
@@ -115,7 +115,7 @@ static void main_task(void *arg) {
                 app.gateway.connection = CONN_GATEWAY_ERROR;
         }
 
-        // Fetch from bridge every 5s
+        // Fetch from gateway plugin every 5s
         if (wifi_mgr_is_connected() && (t - last_fetch > CG_POLL_INTERVAL_MS)) {
             last_fetch = t;
 
@@ -173,7 +173,6 @@ static void main_task(void *arg) {
             ctx_pct = (uint8_t)((uint64_t)app.telemetry.context_used * 100 / app.telemetry.context_max);
 
         // Health indicators
-        bool bridge_ok = (app.last_session_fetch > 0 && (t - app.last_session_fetch) < 30000);
         uint32_t fetch_age = app.last_session_fetch > 0 ? (t - app.last_session_fetch) / 1000 : 999;
 
         // Update display every second
@@ -182,7 +181,7 @@ static void main_task(void *arg) {
 
         lv_port_sem_take();
         dash_update_time(time_buf);
-        dash_update_health(app.gateway.healthy, bridge_ok, fetch_age, app.telemetry.model);
+        dash_update_health(app.gateway.healthy, fetch_age, app.telemetry.model);
         dash_update_activity(agent_status, app.telemetry.active_session_label, app.telemetry.active_session_age_s, ctx_pct, app.telemetry.context_used, app.telemetry.context_max);
         dash_update_cost(app.gateway.cost_today, app.cost_rate_per_hour);
         dash_update_tokens(app.gateway.tokens_today);
@@ -310,30 +309,16 @@ void app_main(void) {
             }
         }
         ESP_LOGI(TAG, "Gateway: %s:%d", gw_host, gw_port);
-        oc_client_init(gw_host, gw_port, gw_token, CG_OC_DASH_PORT);
+        oc_client_init(gw_host, gw_port, gw_token);
 
         // Health check
-
         bool healthy = oc_check_health();
         if (healthy) {
             app.gateway.connection = CONN_GATEWAY_CONNECTED;
             app.gateway.healthy = true;
 
-
-            // Check dashboard
-            app.dashboard_available = oc_check_dashboard();
-            app.last_dash_check = now_ms();
-
             // Initial fetch
             initial_data_fetch();
-
-            lv_port_sem_take();
-            if (app.dashboard_available) {
-
-            } else {
-
-            }
-            lv_port_sem_give();
         } else {
             app.gateway.connection = CONN_GATEWAY_ERROR;
         }

@@ -1,0 +1,17 @@
+{
+  "id": "clawglance",
+  "name": "ClawGlance",
+  "description": "Telemetry REST endpoints for ClawGlance ESP32 dashboard",
+  "version": "0.2.0",
+  "configSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+      "refreshIntervalMs": {
+        "type": "number",
+        "default": 3000,
+        "description": "Internal polling interval in milliseconds"
+      }
+    }
+  }
+}
