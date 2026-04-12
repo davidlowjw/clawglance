@@ -4,6 +4,16 @@ A physical mission control dashboard for [OpenClaw](https://openclaw.ai) agents,
 
 Turn your autonomous AI agent from a "black box running in the background" into something you can trust, monitor, and safely operate in real time.
 
+## Screens
+
+<p align="center">
+  <img src="docs/screenshots/01-dashboard.png" width="32%" alt="Dashboard — mission control view with gateway health, agent status, context bar, cost/tokens/sessions cards, model name, 5h/week budget bars, and cache hit rate" />
+  <img src="docs/screenshots/02-activity.png" width="32%" alt="Activity — live session transcript feed showing user messages, tool calls, and agent replies" />
+  <img src="docs/screenshots/03-control.png" width="32%" alt="Control — /Status and Restart GW buttons, brightness slider, and collapsible WiFi configuration" />
+</p>
+
+Screenshots rendered by the [headless PC simulator](sim/) against the actual `main/ui_screens.c` — same LVGL code path the device runs. Regenerate after UI changes with `cd sim && make`.
+
 ## What It Does
 
 **Dashboard** — glanceable status at arm's length:
