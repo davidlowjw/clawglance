@@ -12,7 +12,7 @@ Turn your autonomous AI agent from a "black box running in the background" into 
 - Three KPI cards: cost today (with burn rate), tokens consumed, active sessions
 - Model name and OpenAI usage budget bars (5h window + weekly)
 - Cache hit rate bar
-- Gateway and bridge health indicators with heartbeat age
+- Gateway health indicator with heartbeat age
 - Color-coded alerts when thresholds are crossed
 
 **Activity Feed** — real-time agent transcript:
@@ -45,19 +45,23 @@ Turn your autonomous AI agent from a "black box running in the background" into 
 ## Architecture
 
 ```
-┌─────────────┐     HTTP/5s      ┌──────────────┐     CLI/files     ┌──────────────┐
-│   ESP32-S3  │ ◄──────────────► │  bridge.py   │ ◄───────────────► │   OpenClaw   │
-│  (display)  │    port 7001     │ (your Mac)   │   status --json   │  (gateway)   │
-│             │                  │              │   usage-cost      │              │
-│             │ ──── /health ──► │              │   session JSONL   │              │
-│             │    port 18789    │              │   gateway.log     │              │
-└─────────────┘                  └──────────────┘                   └──────────────┘
+┌─────────────┐     HTTP/5s       ┌─────────────────────────────────┐
+│   ESP32-S3  │ ◄───────────────► │        OpenClaw Gateway         │
+│  (display)  │    port 18789     │  ┌───────────────────────────┐  │
+│             │                   │  │  clawglance plugin        │  │
+│             │  /api/clawglance/ │  │    /api/clawglance/*      │  │
+│             │                   │  │  (runs in-process: reads  │  │
+│             │ ─── /health ────► │  │   session JSONL, tails    │  │
+│             │                   │  │   logs, polls CLI every   │  │
+│             │                   │  │   3s)                     │  │
+└─────────────┘                   │  └───────────────────────────┘  │
+                                  └─────────────────────────────────┘
 ```
 
-- **bridge.py** runs on the same machine as OpenClaw, polling CLI commands and reading local files every 3 seconds
-- **ESP32** polls the bridge over HTTP every 5 seconds and checks gateway health directly every 30 seconds
-- **Zero token cost** for monitoring — all data comes from CLI and file reads, not LLM calls
-- WiFi and gateway settings are configurable on-device and persist in NVS flash
+- **plugin-clawglance** is a TypeScript gateway plugin that runs inside the OpenClaw gateway process. It polls session files, `openclaw status --json`, `openclaw gateway usage-cost`, and tails gateway/runtime logs every 3 seconds, then serves the result at `/api/clawglance/*` on the gateway's own port.
+- **ESP32** polls the plugin over HTTP every 5 seconds and runs a `/health` check directly against the gateway every 30 seconds.
+- **Zero token cost** for monitoring — all data comes from local files and CLI output, not LLM calls.
+- WiFi and gateway settings are configurable on-device and persist in NVS flash.
 
 ## Quick Start
 
@@ -91,21 +95,32 @@ If the USB port isn't auto-detected:
 pio run -t upload --upload-port /dev/cu.usbmodemXXXXX
 ```
 
-### 4. Start the Bridge
+### 4. Install the ClawGlance Plugin
 
-On the machine running OpenClaw:
+On the machine running OpenClaw, drop `plugin-clawglance/` into the OpenClaw extensions directory as `clawglance`, then restart the gateway so it picks up the new plugin:
 
 ```bash
-python3 bridge.py &
+# One-time install (copy):
+cp -r plugin-clawglance ~/.openclaw/extensions/clawglance
+
+# Or for development — symlink so source edits reload on gateway restart:
+ln -s "$(pwd)/plugin-clawglance" ~/.openclaw/extensions/clawglance
+
+# Restart the gateway:
+openclaw gateway restart
 ```
 
-The bridge listens on `0.0.0.0:7001` and exposes:
-- `/api/telemetry` — model, context, tokens, cache, budget
-- `/api/costs` — daily cost and token count
-- `/api/sessions` — active session list
-- `/api/transcript` — recent agent activity from session JSONL
-- `/api/activity` — gateway log events
-- `/v1/chat/completions` — send commands (restart gateway, refresh status)
+Once loaded, the plugin exposes REST endpoints on the gateway's own port (default `18789`, Bearer-auth with your gateway token):
+
+- `/api/clawglance/telemetry` — model, context, tokens, cache, budget
+- `/api/clawglance/costs` — daily cost and token count
+- `/api/clawglance/sessions` — session list with status
+- `/api/clawglance/transcript` — recent agent transcript from session JSONL
+- `/api/clawglance/activity` — gateway log events
+- `/api/clawglance/system` — version, model, session counts
+- `/api/clawglance/chat` — POST a message into the active session (used by the Send screen)
+
+Note that the plugin requires OpenClaw gateway `>= 2026.3.24-beta.2` (the plugin API version is pinned in `plugin-clawglance/openclaw.plugin.json`).
 
 ### 5. Configure OpenClaw Gateway
 
@@ -126,7 +141,7 @@ clawglance-s3/
 │   ├── ui_screens.c        # LVGL UI — all 4 screens + update functions
 │   ├── ui_screens.h        # Public UI API
 │   ├── wifi_mgr.c/h        # ESP-IDF WiFi with auto-reconnect
-│   ├── oc_client.c/h       # HTTP client for bridge + gateway
+│   ├── oc_client.c/h       # HTTP client for the gateway plugin
 │   ├── lobster_icon.c      # Custom LVGL font — lobster emoji (16px)
 │   ├── lobster_icon_lg.c   # Large lobster emoji (48px) for about screen
 │   └── Kconfig.projbuild   # LVGL task priority config
@@ -135,7 +150,10 @@ clawglance-s3/
 │   ├── lv_port/            # Display + touch driver (ST7796S)
 │   ├── lcd_bsp/            # Board support package
 │   └── pwm/                # PWM driver
-├── bridge.py               # Python HTTP proxy for OpenClaw data
+├── plugin-clawglance/      # OpenClaw gateway plugin (TypeScript)
+│   ├── index.ts            # Polling + HTTP routes (runs in-process)
+│   ├── openclaw.plugin.json
+│   └── package.json
 ├── platformio.ini          # PlatformIO build config
 ├── CMakeLists.txt          # ESP-IDF CMake config
 ├── partitions.csv          # Flash partition table
