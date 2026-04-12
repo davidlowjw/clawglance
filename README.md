@@ -45,7 +45,7 @@ Screenshots rendered by the [headless PC simulator](sim/) against the actual `ma
 
 ## Hardware
 
-- **ESP32-S3 3.5" Touch Display Board** (~$20 on AliExpress)
+- **ESP32-S3 3.5" Touch Display Board** (Link to store url)
   - 480x320 TFT LCD (ST7796S controller, SPI)
   - Capacitive touchscreen
   - 8MB Flash, 8MB PSRAM (octal)
