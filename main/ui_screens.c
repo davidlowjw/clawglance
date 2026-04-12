@@ -510,15 +510,18 @@ void activity_update(const app_state_t *state) {
 // ============================================================
 // CONTROL Screen
 // ============================================================
+#ifndef CG_SIM
 #include "driver/ledc.h"
 #include "nvs_flash.h"
 #include "nvs.h"
 #include "esp_system.h"
+#endif
 
 static bool backlight_pwm_inited = false;
 static uint8_t current_brightness = 255;
 
 static void init_backlight_pwm(void) {
+#ifndef CG_SIM
     if (backlight_pwm_inited) return;
     ledc_timer_config_t timer = {
         .speed_mode = LEDC_LOW_SPEED_MODE,
@@ -538,31 +541,40 @@ static void init_backlight_pwm(void) {
     };
     ledc_channel_config(&channel);
     backlight_pwm_inited = true;
+#endif
 }
 
 static void set_brightness(uint8_t val) {
     current_brightness = val;
+#ifndef CG_SIM
     init_backlight_pwm();
     ledc_set_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0, val);
     ledc_update_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0);
+#endif
 }
 
 static void save_brightness(uint8_t val) {
+#ifndef CG_SIM
     nvs_handle_t h;
     if (nvs_open("clawglance", NVS_READWRITE, &h) == ESP_OK) {
         nvs_set_u8(h, "brightness", val);
         nvs_commit(h);
         nvs_close(h);
     }
+#else
+    (void)val;
+#endif
 }
 
 static uint8_t load_brightness(void) {
-    nvs_handle_t h;
     uint8_t val = 255;
+#ifndef CG_SIM
+    nvs_handle_t h;
     if (nvs_open("clawglance", NVS_READONLY, &h) == ESP_OK) {
         nvs_get_u8(h, "brightness", &val);
         nvs_close(h);
     }
+#endif
     return val < 10 ? 10 : val;
 }
 
@@ -619,6 +631,7 @@ static lv_obj_t *s_wifi_ta, *s_pass_ta;
 
 static void save_config_handler(lv_event_t *e) {
     (void)e;
+#ifndef CG_SIM
     nvs_handle_t h;
     if (nvs_open("clawglance", NVS_READWRITE, &h) != ESP_OK) return;
 
@@ -629,6 +642,7 @@ static void save_config_handler(lv_event_t *e) {
 
     // Reboot
     esp_restart();
+#endif
 }
 
 static void cmd_btn_handler(lv_event_t *e) {
@@ -770,13 +784,15 @@ static void build_send_screen(lv_obj_t *parent) {
     lv_obj_set_style_text_font(s_wifi_ta, &lv_font_montserrat_12, 0);
     lv_obj_set_style_border_color(s_wifi_ta, lv_color_hex(OC_BORDER), 0);
     {
-        nvs_handle_t h;
         char buf[33] = "";
+#ifndef CG_SIM
+        nvs_handle_t h;
         size_t len = sizeof(buf);
         if (nvs_open("clawglance", NVS_READONLY, &h) == ESP_OK) {
             nvs_get_str(h, "wifi_ssid", buf, &len);
             nvs_close(h);
         }
+#endif
         if (buf[0] == '\0') strlcpy(buf, CG_WIFI_SSID, sizeof(buf));
         lv_textarea_set_text(s_wifi_ta, buf);
     }
@@ -799,13 +815,15 @@ static void build_send_screen(lv_obj_t *parent) {
     lv_obj_set_style_text_font(s_pass_ta, &lv_font_montserrat_12, 0);
     lv_obj_set_style_border_color(s_pass_ta, lv_color_hex(OC_BORDER), 0);
     {
-        nvs_handle_t h;
         char buf[65] = "";
+#ifndef CG_SIM
+        nvs_handle_t h;
         size_t len = sizeof(buf);
         if (nvs_open("clawglance", NVS_READONLY, &h) == ESP_OK) {
             nvs_get_str(h, "wifi_pass", buf, &len);
             nvs_close(h);
         }
+#endif
         if (buf[0] == '\0') strlcpy(buf, CG_WIFI_PASS, sizeof(buf));
         lv_textarea_set_text(s_pass_ta, buf);
     }

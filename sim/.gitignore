@@ -1,0 +1,4 @@
+out/
+sim_main
+sim_main.dSYM/
+*.o
