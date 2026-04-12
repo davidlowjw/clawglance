@@ -188,7 +188,7 @@ clawglance/
 
 ## License
 
-MIT
+[MIT](LICENSE) © 2026 David Low
 
 ## Credits
 
