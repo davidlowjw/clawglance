@@ -1,4 +1,4 @@
-# ClawGlance S3
+# ClawGlance
 
 A physical mission control dashboard for [OpenClaw](https://openclaw.ai) agents, built on an ESP32-S3 with a 3.5" touchscreen display.
 
@@ -133,7 +133,7 @@ openclaw config set gateway.bind lan
 ## Project Structure
 
 ```
-clawglance-s3/
+clawglance/
 ├── main/
 │   ├── main.c              # Entry point, polling loop, boot sequence
 │   ├── config.h            # WiFi, gateway, display settings

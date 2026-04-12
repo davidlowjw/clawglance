@@ -329,7 +329,7 @@ bool oc_send_chat(const char *message, char *response, int response_len) {
     cJSON *body = cJSON_CreateObject();
     cJSON_AddStringToObject(body, "model", "openclaw");
     cJSON_AddBoolToObject(body, "stream", false);
-    cJSON_AddStringToObject(body, "user", "clawglance-s3");
+    cJSON_AddStringToObject(body, "user", "clawglance");
 
     cJSON *messages = cJSON_AddArrayToObject(body, "messages");
     cJSON *msg = cJSON_CreateObject();
