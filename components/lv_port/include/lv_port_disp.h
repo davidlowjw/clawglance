@@ -26,7 +26,10 @@ extern "C" {
 #include "freertos/semphr.h"
 
 #include "esp_lcd_panel_io.h"
+#include "soc/soc_caps.h"
+#if SOC_LCD_RGB_SUPPORTED
 #include "esp_lcd_panel_rgb.h"
+#endif
 #include "esp_lcd_panel_vendor.h"
 #include "esp_lcd_panel_ops.h"
 

@@ -1,3 +1,19 @@
+menu "ClawGlance Board"
+    choice CG_BOARD
+        prompt "Target board"
+        default CG_BOARD_S3
+
+        config CG_BOARD_S3
+            bool "ESP32-S3 3.5 inch (pre-compiled BSP)"
+
+        config CG_BOARD_CYD
+            bool "CYD 2.8 inch (ESP32-2432S028R, ILI9341 320x240)"
+
+        config CG_BOARD_CYD35
+            bool "CYD 3.5 inch (ESP32-2432S035, ST7796U 480x320)"
+    endchoice
+endmenu
+
 menu "RGB Driver Configuration"
     config EXAMPLE_DOUBLE_FB
         bool "Use double Frame Buffer"
