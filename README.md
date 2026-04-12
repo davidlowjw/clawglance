@@ -43,14 +43,20 @@ Screenshots rendered by the [headless PC simulator](sim/) against the actual `ma
 - OpenClaw lobster logo, versions, system info
 - Swipe navigation between all screens
 
-## Hardware
+## Supported Hardware
 
-- **ESP32-S3 3.5" Touch Display Board** (Link to store url)
-  - 480x320 TFT LCD (ST7796S controller, SPI)
-  - Capacitive touchscreen
-  - 8MB Flash, 8MB PSRAM (octal)
-  - USB-C for power and flashing
-- That's it. No soldering required.
+ClawGlance runs on multiple ESP32 display boards from a single codebase. Pick one:
+
+| Board | Display | Resolution | Touch | PIO Env |
+|-------|---------|-----------|-------|---------|
+| **ESP32-S3 3.5"** | ST7796S | 480x320 | Capacitive | `s3-35-st7796s` |
+| **CYD 2.8" (ILI9341)** | ILI9341 | 320x240 | Resistive (XPT2046) | `cyd-28-ili9341` |
+| **CYD 2.8" (ST7789)** | ST7789 | 320x240 | Resistive (XPT2046) | `cyd-28-st7789` |
+| **CYD 3.5"** | ST7796U | 480x320 | Resistive (XPT2046) | `cyd-35-st7796u` |
+
+- **CYD** = "Cheap Yellow Display" (ESP32-2432S028R for 2.8", ESP32-2432S035 for 3.5")
+- The 2.8" CYD ships with either ILI9341 or ST7789 depending on the batch — check the IC marking on your board
+- No soldering required on any board. Just USB-C for power and flashing.
 
 ## Architecture
 
@@ -96,13 +102,24 @@ Edit `main/config.h` with your defaults, or configure on-device after first flas
 
 ### 3. Flash
 
+Pick the PIO env that matches your board (see table above):
+
 ```bash
-pio run -t upload
+pio run -e cyd-28-ili9341 -t upload    # CYD 2.8" ILI9341
+pio run -e cyd-28-st7789 -t upload     # CYD 2.8" ST7789
+pio run -e cyd-35-st7796u -t upload    # CYD 3.5"
+pio run -e s3-35-st7796s -t upload     # ESP32-S3 3.5"
 ```
 
 If the USB port isn't auto-detected:
 ```bash
-pio run -t upload --upload-port /dev/cu.usbmodemXXXXX
+pio run -e cyd-28-ili9341 -t upload --upload-port /dev/cu.usbserialXXXXX
+```
+
+**First boot (CYD boards only):** A touch calibration screen appears. Tap the red crosshair (top-left), then the blue crosshair (bottom-right). Calibration is saved to flash and doesn't repeat unless you erase NVS:
+
+```bash
+python3 tools/erase_nvs.py
 ```
 
 ### 4. Install the ClawGlance Plugin
@@ -146,36 +163,50 @@ openclaw config set gateway.bind lan
 clawglance/
 ├── main/
 │   ├── main.c              # Entry point, polling loop, boot sequence
-│   ├── config.h            # WiFi, gateway, display settings
+│   ├── config.h            # WiFi, gateway, display, board selection
 │   ├── app_state.h         # Data structures (telemetry, sessions, etc.)
-│   ├── ui_screens.c        # LVGL UI — all 4 screens + update functions
+│   ├── ui_screens.c        # LVGL UI — all 4 screens + board-conditional layout
 │   ├── ui_screens.h        # Public UI API
 │   ├── wifi_mgr.c/h        # ESP-IDF WiFi with auto-reconnect
 │   ├── oc_client.c/h       # HTTP client for the gateway plugin
 │   ├── lobster_icon.c      # Custom LVGL font — lobster emoji (16px)
 │   ├── lobster_icon_lg.c   # Large lobster emoji (48px) for about screen
-│   └── Kconfig.projbuild   # LVGL task priority config
-├── components/             # Pre-compiled board BSP libraries
+│   └── Kconfig.projbuild   # Board selection + LVGL task priority config
+├── components/
 │   ├── lvgl/               # LVGL 8.3 source
-│   ├── lv_port/            # Display + touch driver (ST7796S)
-│   ├── lcd_bsp/            # Board support package
+│   ├── lv_port/            # Display + touch driver — S3 (pre-compiled .a)
+│   ├── lcd_bsp/            # Board support — S3 (pre-compiled .a)
+│   ├── cyd_bsp/            # CYD board support (ILI9341/ST7789/ST7796U + XPT2046)
+│   │   ├── cyd_lcd.c/h     #   SPI display driver with per-board init sequences
+│   │   ├── cyd_touch.c/h   #   XPT2046 touch + NVS calibration + pixel font
+│   │   ├── cyd_lvgl.c      #   LVGL wiring (display + touch + tick + handler)
+│   │   ├── cyd_bsp.c       #   Board init (backlight, GPIO)
+│   │   └── cyd_pins.h      #   Pin map (conditional on board variant)
 │   └── pwm/                # PWM driver
 ├── plugin-clawglance/      # OpenClaw gateway plugin (TypeScript)
 │   ├── index.ts            # Polling + HTTP routes (runs in-process)
 │   ├── openclaw.plugin.json
 │   └── package.json
-├── platformio.ini          # PlatformIO build config
+├── tools/
+│   └── erase_nvs.py        # Utility to erase NVS (forces touch recalibration)
+├── platformio.ini          # PlatformIO build config (4 board envs)
 ├── CMakeLists.txt          # ESP-IDF CMake config
-├── partitions.csv          # Flash partition table
-└── sdkconfig.defaults      # ESP-IDF Kconfig defaults
+├── partitions.csv          # Flash partition table (S3, 8MB)
+├── cyd_partitions.csv      # Flash partition table (CYD boards, 4MB)
+├── sdkconfig.defaults      # ESP-IDF Kconfig defaults (S3)
+├── sdkconfig.cyd.defaults  # ESP-IDF Kconfig defaults (CYD 2.8" ILI9341)
+├── sdkconfig.cyd-st7789.defaults  # (CYD 2.8" ST7789)
+└── sdkconfig.cyd35.defaults       # (CYD 3.5" ST7796U)
 ```
 
 ## Key Technical Details
 
+- **Multi-board from one codebase**: Board selection via Kconfig (`CONFIG_CG_BOARD_*`), pinned in each `sdkconfig.*.defaults`. The S3 board uses pre-compiled BSP libraries (`.a` files); CYD boards use `components/cyd_bsp/` with ILI9341/ST7789/ST7796U + XPT2046 drivers built from source.
 - **Internal RAM contention**: The display DMA and WiFi both need internal (non-PSRAM) RAM. WiFi is initialized with reduced buffers (`static_rx=4, dynamic_rx=8, dynamic TX mode`) to coexist with the display driver.
-- **ESP-IDF 5.3.x required**: The pre-compiled BSP libraries (`.a` files) were built for ESP-IDF 5.3.x. PlatformIO is pinned to `espressif32@6.8.1` which bundles 5.3.0.
+- **ESP-IDF 5.3.x required**: PlatformIO is pinned to `espressif32@6.8.1` which bundles 5.3.0.
 - **LVGL thread safety**: All LVGL updates use `lv_port_sem_take/give` semaphores. The main polling loop runs on `app_main`'s stack (large enough for HTTP+JSON).
-- **NVS persistence**: WiFi credentials, gateway config, and brightness are stored in NVS flash and loaded on boot.
+- **NVS persistence**: WiFi credentials, gateway config, brightness, and touch calibration are stored in NVS flash and loaded on boot.
+- **Touch calibration**: CYD boards run a 2-point crosshair calibration on first boot. Calibration data is saved to NVS and loaded automatically on subsequent boots. Erase with `python3 tools/erase_nvs.py` to recalibrate.
 
 ## Screens
 
