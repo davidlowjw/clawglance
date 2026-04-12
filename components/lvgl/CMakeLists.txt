@@ -48,6 +48,9 @@ target_compile_options(${COMPONENT_LIB} PRIVATE -w)
 target_compile_definitions(${COMPONENT_LIB} PUBLIC "-DLV_CONF_INCLUDE_SIMPLE")
 target_compile_definitions(${COMPONENT_LIB} PUBLIC "-DLV_DEMO_CONF_INCLUDE_SIMPLE")
 
+# Disable FPS/CPU overlay (lv_conf_internal.h defaults to 1 when Kconfig symbol is unset)
+target_compile_definitions(${COMPONENT_LIB} PUBLIC "-DLV_USE_PERF_MONITOR=0")
+
 # Workaround for file system support
 target_compile_definitions(${COMPONENT_LIB} PUBLIC "-DCONFIG_LV_USE_FS_STDIO='S'")
 

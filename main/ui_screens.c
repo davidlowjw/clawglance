@@ -91,7 +91,7 @@ static void build_nav_bar(lv_obj_t *parent, int active_idx) {
     lv_obj_set_flex_align(nav, LV_FLEX_ALIGN_SPACE_EVENLY, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
     lv_obj_clear_flag(nav, LV_OBJ_FLAG_SCROLLABLE);
 
-    const char *labels[] = { LV_SYMBOL_HOME " Dash", LV_SYMBOL_LIST " Activity", LV_SYMBOL_SETTINGS " Control" };
+    const char *labels[] = { LV_SYMBOL_HOME " Dashboard", LV_SYMBOL_LIST " Activity", LV_SYMBOL_SETTINGS " Control" };
     for (int i = 0; i < 3; i++) {
         lv_obj_t *btn = lv_btn_create(nav);
         lv_obj_set_size(btn, 148, 38);
@@ -666,7 +666,7 @@ static void build_send_screen(lv_obj_t *parent) {
     lv_obj_set_style_bg_color(status_btn, lv_color_hex(OC_BLUE), 0);
     lv_obj_set_style_radius(status_btn, 8, 0);
     lv_obj_t *s_lbl = lv_label_create(status_btn);
-    lv_label_set_text(s_lbl, LV_SYMBOL_DOWNLOAD " Refresh");
+    lv_label_set_text(s_lbl, LV_SYMBOL_DOWNLOAD " /Status");
     lv_obj_set_style_text_font(s_lbl, &lv_font_montserrat_12, 0);
     lv_obj_center(s_lbl);
     lv_obj_set_user_data(status_btn, (void *)(intptr_t)1);
