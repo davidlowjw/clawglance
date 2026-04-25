@@ -218,10 +218,8 @@ void app_main(void) {
     ESP_LOGI(TAG, "  CYD 2.8\" Port (ESP32-2432S028R)");
 #elif defined(CG_BOARD_CYD35)
     ESP_LOGI(TAG, "  CYD 3.5\" Port (ESP32-2432S035)");
-#elif defined(CG_BOARD_S3_WAVESHARE)
+#else  // CG_BOARD_S3_WAVESHARE
     ESP_LOGI(TAG, "  Waveshare ESP32-S3-Touch-LCD-3.5 Port");
-#else
-    ESP_LOGI(TAG, "  ESP32-S3 3.5\" Port");
 #endif
     ESP_LOGI(TAG, "========================================");
 

@@ -1,13 +1,14 @@
+// Common BSP entry point. Each board's BSP component (cyd_bsp,
+// s3w_bsp, …) provides its own implementation of `sys_int()`; main.c
+// calls it once at startup to bring up the panel/backlight/I2C/etc.
+#pragma once
 
-#ifndef _BSP_BOARD_H_
-#define _BSP_BOARD_H_
+#ifdef __cplusplus
+extern "C" {
+#endif
 
-#include "driver/gpio.h"
-
-#define GPIO_LCD_BL     (GPIO_NUM_1)
-// 开发板
-// #define GPIO_LCD_BL     (GPIO_NUM_8)
 void sys_int(void);
 
-#endif 
-
+#ifdef __cplusplus
+}
+#endif

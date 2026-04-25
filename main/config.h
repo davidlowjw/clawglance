@@ -14,12 +14,10 @@
   #define CG_BOARD_CYD
 #elif defined(CONFIG_CG_BOARD_S3_WAVESHARE)
   #define CG_BOARD_S3_WAVESHARE
-#elif defined(CONFIG_CG_BOARD_S3)
-  #define CG_BOARD_S3
 #else
-  // Fallback: auto-detect from IDF target
+  // Fallback: auto-detect from IDF target.
   #ifdef CONFIG_IDF_TARGET_ESP32S3
-    #define CG_BOARD_S3
+    #define CG_BOARD_S3_WAVESHARE
   #else
     #define CG_BOARD_CYD
   #endif
@@ -58,14 +56,10 @@
   #define CG_SCREEN_WIDTH   480
   #define CG_SCREEN_HEIGHT  320
   #define CG_BL_GPIO        27
-#elif defined(CG_BOARD_S3_WAVESHARE)
+#else  // CG_BOARD_S3_WAVESHARE
   #define CG_SCREEN_WIDTH   480
   #define CG_SCREEN_HEIGHT  320
   #define CG_BL_GPIO        6
-#else  // CG_BOARD_S3
-  #define CG_SCREEN_WIDTH   480
-  #define CG_SCREEN_HEIGHT  320
-  #define CG_BL_GPIO        1
 #endif
 
 // --- NTP ---

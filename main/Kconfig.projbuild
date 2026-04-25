@@ -1,10 +1,7 @@
 menu "ClawGlance Board"
     choice CG_BOARD
         prompt "Target board"
-        default CG_BOARD_S3
-
-        config CG_BOARD_S3
-            bool "ESP32-S3 3.5 inch (pre-compiled BSP)"
+        default CG_BOARD_S3_WAVESHARE
 
         config CG_BOARD_S3_WAVESHARE
             bool "Waveshare ESP32-S3-Touch-LCD-3.5 (ST7796 + FT6336)"
