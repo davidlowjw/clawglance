@@ -14,4 +14,5 @@ idf_component_register(
     esp_timer
     json
     cyd_bsp
+    s3w_bsp
 )
