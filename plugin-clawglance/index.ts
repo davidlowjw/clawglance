@@ -164,28 +164,33 @@ async function refreshTelemetry() {
   const sessList: SessionCtx[] = [];
   let activeLabel = "", activeAgeS = 0;
 
+  const ACTIVE_THRESHOLD_MS = 120_000;
   const sorted = [...recent].sort((a, b) => (a.age ?? 999_999_999) - (b.age ?? 999_999_999));
   if (sorted[0]?.model) model = sorted[0].model;
-  for (const s of sorted) {
-    inputTok += s.inputTokens ?? 0;
-    outputTok += s.outputTokens ?? 0;
-    cacheRead += s.cacheRead ?? 0;
-    cacheWrite += s.cacheWrite ?? 0;
-    if ((s.contextTokens ?? 0) > contextMax) contextMax = s.contextTokens ?? 0;
-    contextUsed += s.totalTokens ?? 0;
 
+  let active: any = null;
+  for (const s of sorted) {
     const key: string = s.key ?? "";
     const parts = key.split(":");
     let label = parts[parts.length - 1] ?? key;
     if (label.length > 20) label = label.slice(0, 20);
 
     const ageMs: number = s.age ?? 999_999_999;
-    const isActive = ageMs < 120_000;
-    if (isActive && !activeLabel) {
+    if (ageMs < ACTIVE_THRESHOLD_MS && !active) {
+      active = s;
       activeLabel = label;
       activeAgeS = Math.floor(ageMs / 1_000);
     }
     sessList.push({ label, context_pct: s.percentUsed ?? 0 });
+  }
+
+  if (active) {
+    inputTok = active.inputTokens ?? 0;
+    outputTok = active.outputTokens ?? 0;
+    cacheRead = active.cacheRead ?? 0;
+    cacheWrite = active.cacheWrite ?? 0;
+    contextMax = active.contextTokens ?? 0;
+    contextUsed = active.totalTokens ?? 0;
   }
 
   const totalRead = cacheRead + inputTok;
