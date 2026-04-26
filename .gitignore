@@ -9,9 +9,15 @@ sdkconfig.esp32s3
 sdkconfig.cyd
 sdkconfig.cyd-*
 sdkconfig.cyd35
+sdkconfig.s3-*
+!sdkconfig.s3-*.defaults
 
 # macOS
 .DS_Store
 
 # Credentials (if user creates a local override)
 config_local.h
+
+# Claude Code skills — managed in a separate per-user repo cloned to
+# ~/.claude/skills/. Don't track project-local skill files.
+.claude/skills/
