@@ -44,7 +44,11 @@
 #define CG_SESSIONS_MAX     8
 
 // --- Polling ---
-#define CG_POLL_INTERVAL_MS 5000
+// 1s gives near-real-time tracking. Six endpoints fire per cycle
+// (sessions, costs, system, telemetry, activity, transcript) — fine
+// on a local network, but if you point the gateway at a remote host
+// you may want to bump this back up.
+#define CG_POLL_INTERVAL_MS 1000
 #define CG_HEALTH_INTERVAL  60000
 
 // --- Display ---

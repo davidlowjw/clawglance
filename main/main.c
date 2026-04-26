@@ -115,8 +115,8 @@ static void main_task(void *arg) {
                 app.gateway.connection = CONN_GATEWAY_ERROR;
         }
 
-        // Fetch from gateway plugin every 5s
-        if (wifi_mgr_is_connected() && (t - last_fetch > CG_POLL_INTERVAL_MS)) {
+        // Fetch from gateway plugin every CG_POLL_INTERVAL_MS
+        if (wifi_mgr_is_connected() && (t - last_fetch >= CG_POLL_INTERVAL_MS)) {
             last_fetch = t;
 
             if (oc_fetch_sessions(app.sessions, &app.session_count, CG_SESSIONS_MAX)) {
