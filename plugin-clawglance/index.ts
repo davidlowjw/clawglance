@@ -155,6 +155,7 @@ async function refreshTelemetry() {
   let activeLabel = "", activeAgeS = 0;
 
   const sorted = [...recent].sort((a, b) => (a.age ?? 999_999_999) - (b.age ?? 999_999_999));
+  if (sorted[0]?.model) model = sorted[0].model;
   for (const s of sorted) {
     inputTok += s.inputTokens ?? 0;
     outputTok += s.outputTokens ?? 0;
@@ -162,7 +163,6 @@ async function refreshTelemetry() {
     cacheWrite += s.cacheWrite ?? 0;
     if ((s.contextTokens ?? 0) > contextMax) contextMax = s.contextTokens ?? 0;
     contextUsed += s.totalTokens ?? 0;
-    if (s.model) model = s.model;
 
     const key: string = s.key ?? "";
     const parts = key.split(":");
