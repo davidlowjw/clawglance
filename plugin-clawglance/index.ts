@@ -72,7 +72,11 @@ async function runCmd(cmd: string, timeout = 10_000): Promise<string> {
   }
 }
 
+const TRANSCRIPT_DEDUPE_WINDOW = 5;
 function pushTranscript(entry: TranscriptEntry) {
+  // Gateway sometimes writes the same assistant turn twice (text-only + tool-call variants) within ms.
+  const recent = state.transcript.slice(-TRANSCRIPT_DEDUPE_WINDOW);
+  if (recent.some((e) => e.type === entry.type && e.text === entry.text)) return;
   state.transcript.push(entry);
   if (state.transcript.length > MAX_TRANSCRIPT)
     state.transcript = state.transcript.slice(-MAX_TRANSCRIPT);
