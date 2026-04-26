@@ -22,7 +22,7 @@ const execAsync = promisify(exec);
 
 // ── In-memory state ─────────────────────────────────────────────
 
-interface TranscriptEntry { ts: string; type: string; text: string; }
+interface TranscriptEntry { ts: string; type: string; text: string; pushedAt?: number; }
 interface ActivityEntry { ts: string; level: string; msg: string; }
 interface SessionCtx { label: string; context_pct: number; }
 interface SessionInfo {
@@ -72,11 +72,17 @@ async function runCmd(cmd: string, timeout = 10_000): Promise<string> {
   }
 }
 
-const TRANSCRIPT_DEDUPE_WINDOW = 5;
+const TRANSCRIPT_DEDUPE_MS = 2000;
 function pushTranscript(entry: TranscriptEntry) {
   // Gateway sometimes writes the same assistant turn twice (text-only + tool-call variants) within ms.
-  const recent = state.transcript.slice(-TRANSCRIPT_DEDUPE_WINDOW);
-  if (recent.some((e) => e.type === entry.type && e.text === entry.text)) return;
+  const now = Date.now();
+  const cutoff = now - TRANSCRIPT_DEDUPE_MS;
+  for (let i = state.transcript.length - 1; i >= 0; i--) {
+    const e = state.transcript[i];
+    if ((e.pushedAt ?? 0) < cutoff) break;
+    if (e.type === entry.type && e.text === entry.text) return;
+  }
+  entry.pushedAt = now;
   state.transcript.push(entry);
   if (state.transcript.length > MAX_TRANSCRIPT)
     state.transcript = state.transcript.slice(-MAX_TRANSCRIPT);
@@ -433,7 +439,7 @@ export default definePluginEntry({
       { path: "/api/clawglance/system", handler: () => ({ success: true, data: state.system }) },
       { path: "/api/clawglance/telemetry", handler: () => ({ success: true, data: state.telemetry }) },
       { path: "/api/clawglance/activity", handler: () => ({ success: true, data: state.activity.slice(-8) }) },
-      { path: "/api/clawglance/transcript", handler: () => ({ success: true, data: state.transcript.slice(-20) }) },
+      { path: "/api/clawglance/transcript", handler: () => ({ success: true, data: state.transcript.slice(-20).map(({ pushedAt, ...rest }) => rest) }) },
     ];
 
     for (const route of routes) {
