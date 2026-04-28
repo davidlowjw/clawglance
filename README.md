@@ -29,7 +29,7 @@ Screenshots rendered by the [headless PC simulator](sim/) against the actual `ma
 - Parsed from OpenClaw session JSONL files
 - Shows user messages, tool calls, and agent replies
 - Color-coded: green (user), amber (tools), grey (replies)
-- Last 10 events, auto-updates every 5 seconds
+- Last 10 events, auto-updates every 1 second
 
 **Control Screen** — manage your setup:
 - Refresh Status / Restart Gateway buttons
@@ -49,7 +49,7 @@ ClawGlance runs on multiple ESP32 display boards from a single codebase. Pick on
 
 | Board | Display | Resolution | Touch | PIO Env |
 |-------|---------|-----------|-------|---------|
-| **ESP32-S3 3.5"** | ST7796S | 480x320 | Capacitive | `s3-35-st7796s` |
+| **Waveshare ESP32-S3-Touch-LCD-3.5** | ST7796 | 480x320 | Capacitive (FT6336U) | `s3-waveshare-35` |
 | **CYD 2.8" (ILI9341)** | ILI9341 | 320x240 | Resistive (XPT2046) | `cyd-28-ili9341` |
 | **CYD 2.8" (ST7789)** | ST7789 | 320x240 | Resistive (XPT2046) | `cyd-28-st7789` |
 | **CYD 3.5"** | ST7796U | 480x320 | Resistive (XPT2046) | `cyd-35-st7796u` |
@@ -61,7 +61,7 @@ ClawGlance runs on multiple ESP32 display boards from a single codebase. Pick on
 ## Architecture
 
 ```
-┌─────────────┐     HTTP/5s       ┌─────────────────────────────────┐
+┌─────────────┐     HTTP/1s       ┌─────────────────────────────────┐
 │   ESP32-S3  │ ◄───────────────► │        OpenClaw Gateway         │
 │  (display)  │    port 18789     │  ┌───────────────────────────┐  │
 │             │                   │  │  clawglance plugin        │  │
@@ -75,7 +75,7 @@ ClawGlance runs on multiple ESP32 display boards from a single codebase. Pick on
 ```
 
 - **plugin-clawglance** is a TypeScript gateway plugin that runs inside the OpenClaw gateway process. It polls session files, `openclaw status --json`, `openclaw gateway usage-cost`, and tails gateway/runtime logs every 3 seconds, then serves the result at `/api/clawglance/*` on the gateway's own port.
-- **ESP32** polls the plugin over HTTP every 5 seconds and runs a `/health` check directly against the gateway every 30 seconds.
+- **ESP32** polls the plugin over HTTP every 1 second (six endpoints per cycle, ~180 ms total on a local network) and runs a `/health` check directly against the gateway every 30 seconds.
 - **Zero token cost** for monitoring — all data comes from local files and CLI output, not LLM calls.
 - WiFi and gateway settings are configurable on-device and persist in NVS flash.
 
@@ -108,7 +108,7 @@ Pick the PIO env that matches your board (see table above):
 pio run -e cyd-28-ili9341 -t upload    # CYD 2.8" ILI9341
 pio run -e cyd-28-st7789 -t upload     # CYD 2.8" ST7789
 pio run -e cyd-35-st7796u -t upload    # CYD 3.5"
-pio run -e s3-35-st7796s -t upload     # ESP32-S3 3.5"
+pio run -e s3-waveshare-35 -t upload   # Waveshare ESP32-S3-Touch-LCD-3.5
 ```
 
 If the USB port isn't auto-detected:
@@ -174,34 +174,42 @@ clawglance/
 │   └── Kconfig.projbuild   # Board selection + LVGL task priority config
 ├── components/
 │   ├── lvgl/               # LVGL 8.3 source
-│   ├── lv_port/            # Display + touch driver — S3 (pre-compiled .a)
-│   ├── lcd_bsp/            # Board support — S3 (pre-compiled .a)
+│   ├── lv_port/            # Header-only LVGL port interface
+│   ├── lcd_bsp/            # Header-only board interface (sys_int)
 │   ├── cyd_bsp/            # CYD board support (ILI9341/ST7789/ST7796U + XPT2046)
 │   │   ├── cyd_lcd.c/h     #   SPI display driver with per-board init sequences
 │   │   ├── cyd_touch.c/h   #   XPT2046 touch + NVS calibration + pixel font
 │   │   ├── cyd_lvgl.c      #   LVGL wiring (display + touch + tick + handler)
 │   │   ├── cyd_bsp.c       #   Board init (backlight, GPIO)
 │   │   └── cyd_pins.h      #   Pin map (conditional on board variant)
+│   ├── s3w_bsp/            # Waveshare ESP32-S3-Touch-LCD-3.5 BSP
+│   │   ├── s3w_lcd.c/h     #   ST7796 over SPI2 (CS tied to GND on board)
+│   │   ├── s3w_touch.c/h   #   FT6336U over I2C (polled, INT skipped)
+│   │   ├── s3w_expander.c/h#   TCA9554 I/O expander (drives LCD/touch reset)
+│   │   ├── s3w_lvgl.c      #   LVGL wiring (display + touch + tick + handler)
+│   │   ├── s3w_bsp.c       #   Board init (I2C, expander, reset pulse, backlight)
+│   │   └── s3w_pins.h      #   Pin map
 │   └── pwm/                # PWM driver
 ├── plugin-clawglance/      # OpenClaw gateway plugin (TypeScript)
 │   ├── index.ts            # Polling + HTTP routes (runs in-process)
 │   ├── openclaw.plugin.json
 │   └── package.json
 ├── tools/
-│   └── erase_nvs.py        # Utility to erase NVS (forces touch recalibration)
+│   ├── erase_nvs.py        # Utility to erase NVS (forces touch recalibration)
+│   └── serial_monitor.py   # Headless `pio device monitor` replacement (no TTY)
 ├── platformio.ini          # PlatformIO build config (4 board envs)
 ├── CMakeLists.txt          # ESP-IDF CMake config
-├── partitions.csv          # Flash partition table (S3, 8MB)
+├── partitions.csv          # Flash partition table (used by Waveshare 16MB)
 ├── cyd_partitions.csv      # Flash partition table (CYD boards, 4MB)
-├── sdkconfig.defaults      # ESP-IDF Kconfig defaults (S3)
-├── sdkconfig.cyd.defaults  # ESP-IDF Kconfig defaults (CYD 2.8" ILI9341)
-├── sdkconfig.cyd-st7789.defaults  # (CYD 2.8" ST7789)
-└── sdkconfig.cyd35.defaults       # (CYD 3.5" ST7796U)
+├── sdkconfig.s3-waveshare.defaults  # ESP-IDF Kconfig defaults (Waveshare S3)
+├── sdkconfig.cyd.defaults           # (CYD 2.8" ILI9341)
+├── sdkconfig.cyd-st7789.defaults    # (CYD 2.8" ST7789)
+└── sdkconfig.cyd35.defaults         # (CYD 3.5" ST7796U)
 ```
 
 ## Key Technical Details
 
-- **Multi-board from one codebase**: Board selection via Kconfig (`CONFIG_CG_BOARD_*`), pinned in each `sdkconfig.*.defaults`. The S3 board uses pre-compiled BSP libraries (`.a` files); CYD boards use `components/cyd_bsp/` with ILI9341/ST7789/ST7796U + XPT2046 drivers built from source.
+- **Multi-board from one codebase**: Board selection via Kconfig (`CONFIG_CG_BOARD_*`), pinned in each `sdkconfig.*.defaults`. All BSPs are open source — `components/cyd_bsp/` for the CYD family (ILI9341/ST7789/ST7796U + XPT2046), `components/s3w_bsp/` for the Waveshare ESP32-S3 board (ST7796 + FT6336U over I2C, with a TCA9554 expander handling shared LCD/touch reset).
 - **Internal RAM contention**: The display DMA and WiFi both need internal (non-PSRAM) RAM. WiFi is initialized with reduced buffers (`static_rx=4, dynamic_rx=8, dynamic TX mode`) to coexist with the display driver.
 - **ESP-IDF 5.3.x required**: PlatformIO is pinned to `espressif32@6.8.1` which bundles 5.3.0.
 - **LVGL thread safety**: All LVGL updates use `lv_port_sem_take/give` semaphores. The main polling loop runs on `app_main`'s stack (large enough for HTTP+JSON).
